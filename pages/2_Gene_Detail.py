@@ -5,6 +5,37 @@ Gene Detail Page - Comprehensive view of a single TF perturbation
 import streamlit as st
 import pandas as pd
 
+st.set_page_config(
+    page_title="Gene Detail - MORPHIC Portal",
+    page_icon="🧬",
+    layout="wide",
+)
+
+# Custom CSS with Google Fonts (shared across pages)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.stDataFrame {
+    font-family: 'Inter', sans-serif;
+}
+
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
 # Add src to path
 import sys
 from pathlib import Path
@@ -36,12 +67,6 @@ from src.config import (
     get_marker_dotplot_path,
 )
 from src.gene_summary import render_gene_summary_section
-
-st.set_page_config(
-    page_title="Gene Detail - MORPHIC Portal",
-    page_icon=":dna:",
-    layout="wide",
-)
 
 st.title("Gene Detail")
 
@@ -452,13 +477,22 @@ with tab_cellxgene:
 
 # Sidebar
 with st.sidebar:
-    st.header(f"Gene: {gene}")
-
-    st.caption("Use the tabs above to explore different aspects of this TF perturbation.")
+    st.markdown("### 🧬 MORPHIC Portal")
+    st.caption("TF Perturbation Screen Explorer")
 
     st.divider()
 
-    st.subheader("External Resources")
-    st.markdown(f"[GeneCards]({get_genecards_url(gene)})")
-    st.markdown(f"[DepMap]({get_depmap_url(gene)})")
-    st.markdown(f"[NCBI Gene]({get_ncbi_gene_url(gene)})")
+    st.markdown("**Pages**")
+    st.page_link("app.py", label="Home", icon="🏠")
+    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
+    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
+
+    st.divider()
+
+    st.markdown(f"**Current Gene: {gene}**")
+    st.caption("Use tabs to explore perturbation data")
+
+    st.divider()
+
+    st.markdown("**External Resources**")
+    st.markdown(f"[GeneCards]({get_genecards_url(gene)}) · [DepMap]({get_depmap_url(gene)}) · [NCBI]({get_ncbi_gene_url(gene)})")

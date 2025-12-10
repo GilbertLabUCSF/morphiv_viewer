@@ -1,15 +1,114 @@
 """
-MORPHIC TF Perturbation Screen Portal - Landing Page
+MORPHIC TF Perturbation Screen Portal - Home Page
 """
 
 import streamlit as st
 
 st.set_page_config(
     page_title="MORPHIC TF Screen Portal",
-    page_icon=":dna:",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# Custom CSS with Google Fonts
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Global font */
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* Main title styling */
+.main-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Subtitle */
+.subtitle {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    font-weight: 400;
+    margin-bottom: 2rem;
+}
+
+/* Metric cards */
+.metric-card {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.5) 0%, rgba(30, 41, 59, 0.5) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em;
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+/* Section headers */
+.section-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Info cards */
+.info-card {
+    background: rgba(51, 65, 85, 0.3);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+/* Hide default streamlit branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* Improve dataframe styling */
+.stDataFrame {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Button styling */
+.stButton>button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Add src to path
 import sys
@@ -18,122 +117,131 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.data_loader import get_gene_list, get_summary_stats
 
-# Title
-st.title("MORPHIC Transcription Factor Perturbation Screen")
-
-st.markdown("""
-The **MorPhiC Consortium** (Molecular Phenotypes of Null Alleles in Cells) is a National Institutes of Health (NIH)
-initiative to create a comprehensive catalogue of the molecular and cellular phenotypes resulting from the
-inactivation of every human gene.
-
-This portal provides access to the **TF Perturbation Screen** data, enabling exploration of transcription factors
-perturbed via CRISPRi in human pluripotent stem cells (iPSCs) and embryoid bodies (EBs).
-""")
+# Title with custom styling
+st.markdown('<p class="main-title">MORPHIC TF Perturbation Screen</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Exploring transcription factor function in human pluripotent stem cells</p>', unsafe_allow_html=True)
 
 # Summary statistics
-st.header("Dataset Overview")
-
 try:
     stats = get_summary_stats()
 
     if "error" in stats:
         st.error(f"Data loading error: {stats['error']}")
     else:
+        # Dataset overview metrics
+        st.markdown('<p class="section-header">Dataset Overview</p>', unsafe_allow_html=True)
+
         col1, col2, col3, col4, col5 = st.columns(5)
 
-        with col1:
-            st.metric("TFs Perturbed", f"{stats.get('n_genes', 'N/A'):,}")
+        metrics = [
+            (col1, stats.get('n_genes', 0), "TFs Perturbed"),
+            (col2, stats.get('n_perturbations', 0), "Perturbations"),
+            (col3, stats.get('n_cells_ipsc', 0), "iPSC Cells"),
+            (col4, stats.get('n_cells_ebs', 0), "EBs Cells"),
+            (col5, stats.get('n_cells_timecourse', 0), "Timecourse Cells"),
+        ]
 
-        with col2:
-            st.metric("Perturbations", f"{stats.get('n_perturbations', 'N/A'):,}")
-
-        with col3:
-            st.metric("iPSC Cells", f"{stats.get('n_cells_ipsc', 0):,}")
-
-        with col4:
-            st.metric("EBs Cells", f"{stats.get('n_cells_ebs', 0):,}")
-
-        with col5:
-            st.metric("Timecourse Cells", f"{stats.get('n_cells_timecourse', 0):,}")
+        for col, value, label in metrics:
+            with col:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{value:,}</div>
+                    <div class="metric-label">{label}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
 except Exception as e:
     st.error(f"Error loading summary statistics: {e}")
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
 
-# Quick gene search
-st.header("Quick Gene Search")
+# Two column layout for description and quick search
+left_col, right_col = st.columns([1.5, 1])
 
-try:
-    genes = get_gene_list()
+with left_col:
+    st.markdown('<p class="section-header">About</p>', unsafe_allow_html=True)
 
-    if genes:
-        selected_gene = st.selectbox(
-            "Search for a gene:",
-            options=[""] + genes,
-            format_func=lambda x: "Type to search..." if x == "" else x,
-            key="home_gene_search",
-        )
+    st.markdown("""
+    The **MorPhiC Consortium** (Molecular Phenotypes of Null Alleles in Cells) is an NIH
+    initiative to catalogue molecular and cellular phenotypes from inactivating every human gene.
 
-        if selected_gene:
-            st.info(f"Navigate to **Gene Detail** page in the sidebar to view {selected_gene}")
-            # Store selected gene in session state for the detail page
-            st.session_state["selected_gene"] = selected_gene
+    This portal provides access to the **TF Perturbation Screen**, with CRISPRi perturbations
+    of transcription factors in iPSCs and embryoid bodies (EBs).
+    """)
 
-    else:
-        st.warning("No genes found. Check that data sources are properly linked.")
+    st.markdown('<p class="section-header">Available Data</p>', unsafe_allow_html=True)
 
-except Exception as e:
-    st.error(f"Error loading gene list: {e}")
+    data_types = [
+        ("Lineage Analysis", "Distributional effects on 6 developmental lineages"),
+        ("Knockdown Efficiency", "Target gene knockdown validation"),
+        ("Viability Scores", "LFC-based cell fitness measurements"),
+        ("Differential Expression", "Per-perturbation DEG analysis"),
+        ("Timecourse Expression", "Gene expression across differentiation"),
+    ]
 
-st.divider()
+    for title, desc in data_types:
+        st.markdown(f"**{title}** — {desc}")
 
-# About section
-st.header("About This Portal")
+with right_col:
+    st.markdown('<p class="section-header">Quick Gene Search</p>', unsafe_allow_html=True)
 
-st.markdown("""
-### Data Available
+    try:
+        genes = get_gene_list()
 
-- **Lineage Analysis**: Distributional effects on 6 developmental lineages
-  - Amnion, Epiblast, Formative Epiblast, Neural Ectoderm, Non-neural Ectoderm, Trophoblast-Like
+        if genes:
+            selected_gene = st.selectbox(
+                "Search for a gene:",
+                options=[""] + genes,
+                format_func=lambda x: "Type to search..." if x == "" else x,
+                key="home_gene_search",
+                label_visibility="collapsed",
+            )
 
-- **Knockdown Efficiency**: Target gene knockdown validation
+            if selected_gene:
+                st.session_state["selected_gene"] = selected_gene
+                st.success(f"**{selected_gene}** selected")
+                st.page_link("pages/2_Gene_Detail.py", label="View Gene Details →", icon="🧬")
 
-- **Viability/Fitness**: LFC-based cell fitness scores
+        else:
+            st.warning("No genes found. Check data sources.")
 
-- **Differential Expression**: Per-perturbation DEG analysis
+    except Exception as e:
+        st.error(f"Error loading gene list: {e}")
 
-- **Timecourse Expression**: Gene expression across differentiation
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Navigation</p>', unsafe_allow_html=True)
 
-### Navigation
+    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
+    st.markdown("Filter and explore all perturbed TFs", help=None)
 
-Use the sidebar to navigate between pages:
+    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
+    st.markdown("Detailed view with perturbation effects")
 
-1. **Gene Search**: Filter and explore all perturbed TFs
-2. **Gene Detail**: Detailed view of individual genes with perturbation effects,
-   timecourse expression, and links to CellxGene
+# Footer
+st.markdown("---")
+st.markdown(
+    '<p style="text-align: center; color: #64748b; font-size: 0.85rem;">'
+    'MorPhiC Consortium — Molecular Phenotypes of Null Alleles in Cells'
+    '</p>',
+    unsafe_allow_html=True
+)
 
-### External Resources
-
-- [GeneCards](https://www.genecards.org/) - Gene annotations
-- CellxGene - Single-cell data exploration (links on gene pages)
-
----
-
-*MorPhiC Consortium - Molecular Phenotypes of Null Alleles in Cells*
-""")
-
-# Sidebar info
+# Sidebar
 with st.sidebar:
-    st.header("MORPHIC Portal")
+    st.markdown("### 🧬 MORPHIC Portal")
     st.caption("TF Perturbation Screen Explorer")
 
     st.divider()
 
     st.markdown("**Pages**")
+    st.page_link("app.py", label="Home", icon="🏠")
     st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
     st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
 
     st.divider()
 
-    st.caption("v0.1.0 - MVP")
+    st.markdown("**Resources**")
+    st.markdown("[GeneCards](https://www.genecards.org/) · [DepMap](https://depmap.org/) · [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/)")
+
+    st.divider()
+    st.caption("v0.1.0")

@@ -5,6 +5,37 @@ Gene Search Page - Filterable table of all perturbed TFs
 import streamlit as st
 import pandas as pd
 
+st.set_page_config(
+    page_title="Gene Search - MORPHIC Portal",
+    page_icon="🔍",
+    layout="wide",
+)
+
+# Custom CSS with Google Fonts (shared across pages)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.stDataFrame {
+    font-family: 'Inter', sans-serif;
+}
+
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
 # Add src to path
 import sys
 from pathlib import Path
@@ -12,12 +43,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data_loader import load_lineage_analysis, load_knockdown_efficiency
 from src.config import CONDITIONS, LINEAGES, EFFECT_SIZES
-
-st.set_page_config(
-    page_title="Gene Search - MORPHIC Portal",
-    page_icon=":mag:",
-    layout="wide",
-)
 
 st.title("Gene Search")
 st.markdown("Search and filter perturbed transcription factors.")
@@ -219,11 +244,22 @@ if len(summary_df) > 0:
 
 # Sidebar
 with st.sidebar:
-    st.header("Quick Stats")
-
-    st.metric("Genes shown", filtered_df["gene"].nunique())
-    st.metric("Total perturbations", filtered_df["perturbation"].nunique())
+    st.markdown("### 🧬 MORPHIC Portal")
+    st.caption("TF Perturbation Screen Explorer")
 
     st.divider()
 
-    st.caption("Tip: Use filters to narrow down results, then click a gene to view details.")
+    st.markdown("**Pages**")
+    st.page_link("app.py", label="Home", icon="🏠")
+    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
+    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
+
+    st.divider()
+
+    st.markdown("**Quick Stats**")
+    st.metric("Genes shown", filtered_df["gene"].nunique())
+    st.metric("Perturbations", filtered_df["perturbation"].nunique())
+
+    st.divider()
+
+    st.caption("Use filters to narrow down results")
