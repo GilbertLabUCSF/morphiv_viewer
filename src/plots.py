@@ -285,8 +285,13 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         fig.add_annotation(text=f"No timecourse data for {gene}", showarrow=False)
         return fig
 
-    # Sort by day
-    gene_df = gene_df.sort_values("day")
+    # Sort by day with iPSC first (before day 0)
+    day_order = ["iPSC", "0", "2", "4", "6", "8", "10", "12", "14"]
+    gene_df["day_str"] = gene_df["day"].astype(str)
+    gene_df["day_order"] = gene_df["day_str"].apply(
+        lambda x: day_order.index(x) if x in day_order else 999
+    )
+    gene_df = gene_df.sort_values("day_order")
 
     fig = make_subplots(
         rows=1, cols=2,
@@ -294,10 +299,13 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         horizontal_spacing=0.12,
     )
 
+    # Use day_str for x-axis so iPSC displays correctly
+    x_values = gene_df["day_str"].tolist()
+
     # Mean expression
     fig.add_trace(
         go.Scatter(
-            x=gene_df["day"],
+            x=x_values,
             y=gene_df["mean_expression"],
             mode="lines+markers",
             name="Expression",
@@ -312,7 +320,7 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         # New format with multiple thresholds - show >1 TPM and >5 TPM
         fig.add_trace(
             go.Scatter(
-                x=gene_df["day"],
+                x=x_values,
                 y=gene_df["pct_expr_gt1"],
                 mode="lines+markers",
                 name=">1 TPM",
@@ -322,7 +330,7 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         )
         fig.add_trace(
             go.Scatter(
-                x=gene_df["day"],
+                x=x_values,
                 y=gene_df["pct_expr_gt5"],
                 mode="lines+markers",
                 name=">5 TPM",
@@ -335,7 +343,7 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         # Old format - just show pct_expressing
         fig.add_trace(
             go.Scatter(
-                x=gene_df["day"],
+                x=x_values,
                 y=gene_df["pct_expressing"],
                 mode="lines+markers",
                 name="% Expressing",
