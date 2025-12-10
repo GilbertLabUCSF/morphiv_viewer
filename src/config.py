@@ -2,11 +2,16 @@
 Configuration and constants for the MORPHIC Portal.
 """
 
+import os
 from pathlib import Path
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
-DATA_ROOT = PROJECT_ROOT / "data"
+
+# DATA_ROOT can be overridden via environment variable for deployment
+# Default: ./data (symlink for local dev)
+# GCP: Set MORPHIC_DATA_PATH=/opt/morphic/data
+DATA_ROOT = Path(os.environ.get("MORPHIC_DATA_PATH", PROJECT_ROOT / "data"))
 DATA_EXTRACTED = PROJECT_ROOT / "data_extracted"
 
 # TF Perturbseq paths
