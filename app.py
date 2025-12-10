@@ -241,7 +241,9 @@ with st.sidebar:
     st.divider()
 
     st.markdown("**Resources**")
-    st.markdown("[GeneCards](https://www.genecards.org/) · [DepMap](https://depmap.org/) · [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/)")
+    st.link_button("GeneCards", "https://www.genecards.org/", use_container_width=True)
+    st.link_button("DepMap", "https://depmap.org/", use_container_width=True)
+    st.link_button("NCBI Gene", "https://www.ncbi.nlm.nih.gov/gene/", use_container_width=True)
 
     st.divider()
     st.caption("v0.1.0")

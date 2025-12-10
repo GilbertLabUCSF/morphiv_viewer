@@ -494,5 +494,7 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("**External Resources**")
-    st.markdown(f"[GeneCards]({get_genecards_url(gene)}) · [DepMap]({get_depmap_url(gene)}) · [NCBI]({get_ncbi_gene_url(gene)})")
+    st.markdown(f"**Resources for {gene}**")
+    st.link_button(f"GeneCards: {gene}", get_genecards_url(gene), use_container_width=True)
+    st.link_button(f"DepMap: {gene}", get_depmap_url(gene), use_container_width=True)
+    st.link_button(f"NCBI Gene: {gene}", get_ncbi_gene_url(gene), use_container_width=True)
