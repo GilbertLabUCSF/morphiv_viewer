@@ -91,11 +91,29 @@ def sum_unique_cells(group):
     # Get unique n_cells per (perturbation, condition) to avoid counting same cells multiple times
     return group.groupby(["perturbation", "condition"])["n_cells"].first().sum()
 
+# Get max absolute Glass's delta per gene
+max_glass_delta = (
+    filtered_df.groupby("gene")["observed_glass_delta"]
+    .apply(lambda x: x.abs().max())
+    .reset_index(name="max_glass_delta")
+)
+
+# Get lineage effects per gene (glass delta per lineage, take max across perturbations/conditions)
+def get_lineage_effects(group):
+    """Get glass delta for each lineage, taking max absolute value across perturbations."""
+    effects = {}
+    for lineage in group["lineage"].unique():
+        lineage_data = group[group["lineage"] == lineage]
+        # Take max absolute glass delta for this lineage
+        max_delta = lineage_data["observed_glass_delta"].abs().max()
+        effects[lineage] = max_delta
+    return effects
+
+lineage_effects = filtered_df.groupby("gene").apply(get_lineage_effects).reset_index(name="lineage_effects")
+
 summary_df = filtered_df.groupby("gene").agg({
     "perturbation": lambda x: ", ".join(sorted(x.unique())),
     "condition": lambda x: ", ".join(sorted(x.unique())),
-    "max_abs_z_score": "max",
-    "lineage": lambda x: ", ".join(sorted(x.unique())),
 }).reset_index()
 
 # Calculate correct cell counts
@@ -106,17 +124,63 @@ cell_counts = (
     .reset_index(name="n_cells")
 )
 summary_df = summary_df.merge(cell_counts, on="gene")
+summary_df = summary_df.merge(max_glass_delta, on="gene")
+summary_df = summary_df.merge(lineage_effects, on="gene")
 
-summary_df.columns = ["Gene", "Perturbation", "Conditions", "Max Z-Score", "Lineages Tested", "Total Cells"]
+summary_df.columns = ["Gene", "Perturbation", "Conditions", "Total Cells", "Max |Δ|", "Lineage Effects"]
 
-# Sort by max z-score
-summary_df = summary_df.sort_values("Max Z-Score", ascending=False)
+# Sort by max glass delta
+summary_df = summary_df.sort_values("Max |Δ|", ascending=False)
+
+# Format lineage effects as colored text
+# Short lineage names for display
+LINEAGE_SHORT = {
+    "Amnion": "Amn",
+    "Epiblast": "Epi",
+    "Formative_Epiblast": "fEpi",
+    "Neural_Ectoderm": "NE",
+    "Non_neural_Ectoderm": "nnE",
+    "Trophoblast_Like": "Troph",
+    "Pluripotency": "Pluri",
+}
+
+def format_lineage_effects(effects_dict):
+    """Format lineage effects as text with indicators."""
+    if not effects_dict:
+        return ""
+
+    parts = []
+    # Sort by absolute effect size
+    sorted_lineages = sorted(effects_dict.items(), key=lambda x: abs(x[1]), reverse=True)
+
+    for lineage, delta in sorted_lineages:
+        short_name = LINEAGE_SHORT.get(lineage, lineage[:4])
+        abs_delta = abs(delta)
+
+        # Categorize effect size
+        if abs_delta >= 0.8:
+            # Large effect - use indicator
+            indicator = "🔴" if delta > 0 else "🔵"
+        elif abs_delta >= 0.5:
+            # Medium effect
+            indicator = "🟠" if delta > 0 else "🟢"
+        elif abs_delta >= 0.2:
+            # Small effect
+            indicator = "🟡" if delta > 0 else "🩵"
+        else:
+            continue  # Skip negligible effects
+
+        parts.append(f"{indicator}{short_name}")
+
+    return " ".join(parts) if parts else "—"
 
 # Display as interactive dataframe with clickable gene links
-display_df = summary_df.rename(columns={"Max Z-Score": "Max |Z|"}).copy()
+display_df = summary_df.copy()
 display_df["Gene"] = display_df["Gene"].apply(
     lambda g: f"/Gene_Detail?gene={g}"
 )
+display_df["Lineage Effects"] = display_df["Lineage Effects"].apply(format_lineage_effects)
+
 st.dataframe(
     display_df,
     column_config={
@@ -124,18 +188,19 @@ st.dataframe(
             "Gene",
             display_text=r"/Gene_Detail\?gene=(.+)",
         ),
-        "Max |Z|": st.column_config.NumberColumn(format="%.2f"),
+        "Max |Δ|": st.column_config.NumberColumn(format="%.2f"),
         "Total Cells": st.column_config.NumberColumn(format="%d"),
     },
     hide_index=True,
     use_container_width=True,
 )
-st.caption("Click a gene name to view details.")
+st.caption("Click a gene name to view details. Lineage effects: 🔴🟠🟡 = increased (large/med/small), 🔵🟢🩵 = decreased.")
 
-# Download button
+# Download button - prepare clean CSV without dict column
+download_df = summary_df.drop(columns=["Lineage Effects"]).copy()
 st.download_button(
     label="Download Filtered Results (CSV)",
-    data=summary_df.to_csv(index=False),
+    data=download_df.to_csv(index=False),
     file_name="morphic_gene_search_results.csv",
     mime="text/csv",
 )
