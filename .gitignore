@@ -1,0 +1,23 @@
+# Python cache & logs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+morphic_website_env/
+
+# Data & outputs
+data/
+data_extracted/
+
+# Streamlit secrets (never commit keys)
+.streamlit/secrets.toml
+
+# OS / editor artifacts
+.DS_Store
+*.swp
+*.swo
