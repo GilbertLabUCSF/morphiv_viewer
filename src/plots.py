@@ -361,10 +361,11 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
         margin=dict(l=10, r=10, t=60, b=10),
     )
 
-    fig.update_xaxes(title_text="Day", row=1, col=1)
-    fig.update_xaxes(title_text="Day", row=1, col=2)
+    # Force category order so iPSC appears first
+    fig.update_xaxes(title_text="Day", categoryorder="array", categoryarray=x_values, row=1, col=1)
+    fig.update_xaxes(title_text="Day", categoryorder="array", categoryarray=x_values, row=1, col=2)
     fig.update_yaxes(title_text="Mean Expression", row=1, col=1)
-    fig.update_yaxes(title_text="% Cells", row=1, col=2)
+    fig.update_yaxes(title_text="% Cells", range=[0, 100], row=1, col=2)
 
     return fig
 

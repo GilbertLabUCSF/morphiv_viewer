@@ -30,6 +30,8 @@ from src.plots import (
 )
 from src.config import (
     get_genecards_url,
+    get_depmap_url,
+    get_ncbi_gene_url,
     get_umap_highlight_path,
     get_marker_dotplot_path,
 )
@@ -78,15 +80,8 @@ if not gene:
 # Store selection
 st.session_state["selected_gene"] = gene
 
-# Header with gene name and external links
-col_title, col_links = st.columns([3, 1])
-
-with col_title:
-    st.header(gene)
-
-with col_links:
-    genecards_url = get_genecards_url(gene)
-    st.markdown(f"[GeneCards]({genecards_url})")
+# Header with gene name
+st.header(gene)
 
 # Helper function for knockdown category
 def get_knockdown_category(pct):
@@ -459,9 +454,11 @@ with tab_cellxgene:
 with st.sidebar:
     st.header(f"Gene: {gene}")
 
-    genecards_url = get_genecards_url(gene)
-    st.markdown(f"[View on GeneCards]({genecards_url})")
+    st.caption("Use the tabs above to explore different aspects of this TF perturbation.")
 
     st.divider()
 
-    st.caption("Use the tabs above to explore different aspects of this TF perturbation.")
+    st.subheader("External Resources")
+    st.markdown(f"[GeneCards]({get_genecards_url(gene)})")
+    st.markdown(f"[DepMap]({get_depmap_url(gene)})")
+    st.markdown(f"[NCBI Gene]({get_ncbi_gene_url(gene)})")
