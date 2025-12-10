@@ -100,13 +100,14 @@ max_glass_delta = (
 
 # Get lineage effects per gene (glass delta per lineage, take max across perturbations/conditions)
 def get_lineage_effects(group):
-    """Get glass delta for each lineage, taking max absolute value across perturbations."""
+    """Get glass delta for each lineage, keeping sign of the value with max absolute magnitude."""
     effects = {}
     for lineage in group["lineage"].unique():
         lineage_data = group[group["lineage"] == lineage]
-        # Take max absolute glass delta for this lineage
-        max_delta = lineage_data["observed_glass_delta"].abs().max()
-        effects[lineage] = max_delta
+        # Find the value with the largest absolute magnitude, but keep its sign
+        deltas = lineage_data["observed_glass_delta"]
+        idx_max_abs = deltas.abs().idxmax()
+        effects[lineage] = deltas.loc[idx_max_abs]
     return effects
 
 lineage_effects = filtered_df.groupby("gene").apply(get_lineage_effects).reset_index(name="lineage_effects")
