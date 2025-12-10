@@ -157,18 +157,15 @@ def format_lineage_effects(effects_dict):
         short_name = LINEAGE_SHORT.get(lineage, lineage[:4])
         abs_delta = abs(delta)
 
-        # Categorize effect size
+        # Only show effects with |Δ| > 0.5
+        if abs_delta < 0.5:
+            continue
+
+        # Red/orange for increased, blue/light blue for decreased
         if abs_delta >= 0.8:
-            # Large effect - use indicator
             indicator = "🔴" if delta > 0 else "🔵"
-        elif abs_delta >= 0.5:
-            # Medium effect
-            indicator = "🟠" if delta > 0 else "🟢"
-        elif abs_delta >= 0.2:
-            # Small effect
-            indicator = "🟡" if delta > 0 else "🩵"
         else:
-            continue  # Skip negligible effects
+            indicator = "🟠" if delta > 0 else "🩵"
 
         parts.append(f"{indicator}{short_name}")
 
@@ -194,7 +191,7 @@ st.dataframe(
     hide_index=True,
     use_container_width=True,
 )
-st.caption("Click a gene name to view details. Lineage effects: 🔴🟠🟡 = increased (large/med/small), 🔵🟢🩵 = decreased.")
+st.caption("Click a gene name to view details. Lineage effects: 🔴🟠 increased, 🔵🩵 decreased (|Δ| > 0.5)")
 
 # Download button - prepare clean CSV without dict column
 download_df = summary_df.drop(columns=["Lineage Effects"]).copy()
