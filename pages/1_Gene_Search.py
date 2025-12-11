@@ -7,7 +7,7 @@ import pandas as pd
 
 st.set_page_config(
     page_title="Gene Search - MORPHIC Portal",
-    page_icon="🔍",
+    page_icon="logo_transparent.ico",
     layout="wide",
 )
 
@@ -39,8 +39,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.data_loader import load_lineage_analysis, load_knockdown_efficiency
-from src.config import CONDITIONS, LINEAGES, EFFECT_SIZES
+from src.data_loader import load_lineage_analysis, load_knockdown_efficiency, get_perturbations_for_gene
+from src.config import CONDITIONS, LINEAGES, EFFECT_SIZES, get_spider_plot_path
 
 st.title("Gene Search")
 st.markdown("Search and filter perturbed transcription factors.")
@@ -196,7 +196,7 @@ def format_lineage_effects(effects_dict):
 # Display as interactive dataframe with clickable gene links
 display_df = summary_df.copy()
 display_df["Gene"] = display_df["Gene"].apply(
-    lambda g: f"/Gene_Detail?gene={g}"
+    lambda g: f"/morphic/Gene_Detail?gene={g}"
 )
 display_df["Lineage Effects"] = display_df["Lineage Effects"].apply(format_lineage_effects)
 
@@ -205,7 +205,7 @@ st.dataframe(
     column_config={
         "Gene": st.column_config.LinkColumn(
             "Gene",
-            display_text=r"/Gene_Detail\?gene=(.+)",
+            display_text=r"/morphic/Gene_Detail\?gene=(.+)",
         ),
         "Max |Δ|": st.column_config.NumberColumn(format="%.2f"),
         "Total Cells": st.column_config.NumberColumn(format="%d"),
@@ -239,6 +239,17 @@ if len(summary_df) > 0:
     if selected:
         st.session_state["selected_gene"] = selected
         st.info(f"Gene **{selected}** selected. Go to **Gene Detail** page in the sidebar.")
+
+        # Show spider plot preview for selected gene
+        try:
+            pert_info = get_perturbations_for_gene(selected)
+            if pert_info["perturbations"]:
+                first_pert = pert_info["perturbations"][0]
+                spider_path = get_spider_plot_path(first_pert, "EBs")
+                if spider_path.exists():
+                    st.image(str(spider_path), width=500, caption=f"Lineage effects for {selected} (EBs)")
+        except Exception:
+            pass
 
 # Sidebar
 with st.sidebar:

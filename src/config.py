@@ -108,3 +108,40 @@ def get_anchor_dotplot_path(condition: str, variant: str = "standardized", fmt: 
         fmt: png or svg
     """
     return FIGURES_ROOT / "anchor_validation" / f"{condition}_anchor_dotplot_{variant}.{fmt}"
+
+
+def get_spider_plot_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated spider plot figure.
+
+    Args:
+        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
+        condition: iPSC or EBs
+        fmt: png or svg
+    """
+    return FIGURES_DEC1 / condition / "lineage_analysis" / "spider" / f"{perturbation}.{fmt}"
+
+
+def get_marker_tpm_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated marker TPM validation figure.
+
+    Shows antibody/marker expression levels comparing perturbed vs NTC cells.
+
+    Args:
+        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
+        condition: iPSC or EBs
+        fmt: png or svg
+    """
+    return FIGURES_ROOT / condition / "marker_validation" / f"{perturbation}_marker_tpm.{fmt}"
+
+
+def get_antibody_validation_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated antibody validation figure.
+
+    Shows expression of antibody-detectable markers (flow cytometry panels).
+
+    Args:
+        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
+        condition: iPSC or EBs
+        fmt: png or svg
+    """
+    return FIGURES_ROOT / condition / "antibody_validation" / f"{perturbation}_antibody_markers.{fmt}"

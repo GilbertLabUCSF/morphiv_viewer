@@ -7,7 +7,7 @@ import pandas as pd
 
 st.set_page_config(
     page_title="Gene Detail - MORPHIC Portal",
-    page_icon="🧬",
+    page_icon="logo_transparent.ico",
     layout="wide",
 )
 
@@ -63,6 +63,9 @@ from src.config import (
     get_ncbi_gene_url,
     get_umap_highlight_path,
     get_marker_dotplot_path,
+    get_spider_plot_path,
+    get_marker_tpm_path,
+    get_antibody_validation_path,
 )
 from src.gene_summary import render_gene_summary_section
 
@@ -182,9 +185,10 @@ with col5:
 st.divider()
 
 # Tabs for different views
-tab_overview, tab_perturbation, tab_timecourse, tab_cellxgene = st.tabs([
+tab_overview, tab_perturbation, tab_markers, tab_timecourse, tab_cellxgene = st.tabs([
     "Overview",
     "Perturbation Effects",
+    "Marker Expression",
     "Timecourse",
     "CellxGene",
 ])
@@ -233,6 +237,38 @@ with tab_perturbation:
                 st.image(str(umap_path_ipsc), use_container_width=True)
             else:
                 st.info(f"No UMAP highlight for {umap_pert} in iPSC")
+    else:
+        st.warning(f"No perturbations found for {gene}")
+
+    st.divider()
+
+    # Spider Plot section - lineage effects visualization
+    st.subheader("Lineage Effects (Spider Plot)")
+
+    if perturbations:
+        spider_pert = st.selectbox(
+            "Select perturbation:",
+            options=perturbations,
+            key="spider_pert_select",
+        )
+
+        spider_col1, spider_col2 = st.columns(2)
+
+        with spider_col1:
+            st.markdown("**EBs**")
+            spider_path_ebs = get_spider_plot_path(spider_pert, "EBs")
+            if spider_path_ebs.exists():
+                st.image(str(spider_path_ebs), use_container_width=True)
+            else:
+                st.info(f"No spider plot for {spider_pert} in EBs")
+
+        with spider_col2:
+            st.markdown("**iPSC**")
+            spider_path_ipsc = get_spider_plot_path(spider_pert, "iPSC")
+            if spider_path_ipsc.exists():
+                st.image(str(spider_path_ipsc), use_container_width=True)
+            else:
+                st.info(f"No spider plot for {spider_pert} in iPSC")
     else:
         st.warning(f"No perturbations found for {gene}")
 
@@ -377,6 +413,119 @@ with tab_perturbation:
 
     except Exception as e:
         st.warning(f"DEG data not available: {e}")
+
+
+# ============ MARKER EXPRESSION TAB ============
+with tab_markers:
+    st.subheader("Marker / Antibody Expression (TPM)")
+
+    st.markdown("""
+    These plots show the expression levels (TPM) of key lineage markers comparing
+    **perturbed cells vs NTC (non-targeting control)**. This helps validate that
+    lineage composition changes detected in the screen correspond to actual changes
+    in marker gene expression.
+    """)
+
+    # Get perturbation IDs for this gene
+    try:
+        pert_info = get_perturbations_for_gene(gene)
+        perturbations_marker = pert_info["perturbations"]
+    except Exception:
+        perturbations_marker = []
+
+    if perturbations_marker:
+        # Check which perturbations have marker TPM plots available
+        available_marker_perts = []
+        for p in perturbations_marker:
+            marker_path = get_marker_tpm_path(p, "EBs")
+            if marker_path.exists():
+                available_marker_perts.append(p)
+
+        if available_marker_perts:
+            marker_pert = st.selectbox(
+                "Select perturbation:",
+                options=available_marker_perts,
+                key="marker_tpm_pert_select",
+            )
+
+            # Display the marker TPM plot (EBs only for now)
+            st.markdown("**EBs - Marker Expression (TPM)**")
+            marker_path_ebs = get_marker_tpm_path(marker_pert, "EBs")
+            if marker_path_ebs.exists():
+                st.image(str(marker_path_ebs), use_container_width=True)
+
+                st.caption("""
+                **How to interpret:** Each bar shows the mean TPM expression of a marker gene.
+                Blue = NTC control cells, Orange = perturbed cells.
+                Error bars show standard error. Markers are grouped by lineage.
+                """)
+            else:
+                st.info(f"No marker TPM plot available for {marker_pert}")
+
+            # Check for iPSC (if available in future)
+            marker_path_ipsc = get_marker_tpm_path(marker_pert, "iPSC")
+            if marker_path_ipsc.exists():
+                st.divider()
+                st.markdown("**iPSC - Marker Expression (TPM)**")
+                st.image(str(marker_path_ipsc), use_container_width=True)
+
+            # Antibody validation section
+            st.divider()
+            st.subheader("Antibody Marker Validation")
+            st.markdown("""
+            These plots show expression of **antibody-detectable markers** that can be used for
+            flow cytometry validation. They help identify which markers best distinguish
+            perturbed cells from controls for experimental follow-up.
+            """)
+
+            # Check which perturbations have antibody validation plots
+            antibody_path_ebs = get_antibody_validation_path(marker_pert, "EBs")
+            antibody_path_ipsc = get_antibody_validation_path(marker_pert, "iPSC")
+
+            has_antibody_ebs = antibody_path_ebs.exists()
+            has_antibody_ipsc = antibody_path_ipsc.exists()
+
+            if has_antibody_ebs or has_antibody_ipsc:
+                ab_col1, ab_col2 = st.columns(2)
+
+                with ab_col1:
+                    st.markdown("**EBs**")
+                    if has_antibody_ebs:
+                        st.image(str(antibody_path_ebs), use_container_width=True)
+                    else:
+                        st.info(f"No antibody validation for {marker_pert} in EBs")
+
+                with ab_col2:
+                    st.markdown("**iPSC**")
+                    if has_antibody_ipsc:
+                        st.image(str(antibody_path_ipsc), use_container_width=True)
+                    else:
+                        st.info(f"No antibody validation for {marker_pert} in iPSC")
+            else:
+                st.info(f"No antibody validation plots available for {marker_pert}")
+
+        else:
+            st.info(f"""
+            No marker expression plots available for **{gene}** perturbations.
+
+            Marker validation plots are currently available for a subset of interesting genes
+            with strong lineage effects. More will be added in future updates.
+            """)
+
+            # Show which genes have marker plots
+            with st.expander("Genes with marker expression data"):
+                st.markdown("""
+                Marker TPM plots are available for perturbations of these genes:
+
+                ARID2, BCL6, C1orf85, CRTC3, CRX, CSDC2, CSDE1, CTBP2, CTNNB1, EED, EZH2,
+                FOXD3, FOXG1, FUS, GATA3, GRHL2, HES5, KDM1A, KDM1B, MLLT1, MLLT10,
+                NFKBIE, NKX3-1, NR6A1, NRL, RAX, RLF, SIX2, SOX11, SOX17, SP1, STRAP,
+                TADA2B, TBX18, TBX6, TFAP2A, TFAP2B, TFAP2C, TFAP2D, TFAP2E, TGIF1,
+                TRIM33, UBTF, USF2, ZBTB12, ZFP2, ZFP90, ZIC2, ZIC3, ZNF177, ZNF200,
+                ZNF311, ZNF320, ZNF532, ZNF689, ZNF791
+                """)
+    else:
+        st.warning(f"No perturbations found for {gene}")
 
 
 # ============ TIMECOURSE TAB ============
