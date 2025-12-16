@@ -46,4 +46,4 @@ $GCLOUD compute ssh --zone "$GCP_ZONE" "$GCP_INSTANCE" --project "$GCP_PROJECT" 
 
 echo ""
 echo "=== Sync Complete ==="
-echo "Visit: http://34.46.167.158/morphic/"
+echo "Visit: https://perturb.dev/"
