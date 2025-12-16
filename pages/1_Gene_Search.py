@@ -196,7 +196,7 @@ def format_lineage_effects(effects_dict):
 # Display as interactive dataframe with clickable gene links
 display_df = summary_df.copy()
 display_df["Gene"] = display_df["Gene"].apply(
-    lambda g: f"/morphic/Gene_Detail?gene={g}"
+    lambda g: f"/Gene_Detail?gene={g}"
 )
 display_df["Lineage Effects"] = display_df["Lineage Effects"].apply(format_lineage_effects)
 
@@ -205,7 +205,7 @@ st.dataframe(
     column_config={
         "Gene": st.column_config.LinkColumn(
             "Gene",
-            display_text=r"/morphic/Gene_Detail\?gene=(.+)",
+            display_text=r"/Gene_Detail\?gene=(.+)",
         ),
         "Max |Δ|": st.column_config.NumberColumn(format="%.2f"),
         "Total Cells": st.column_config.NumberColumn(format="%d"),
