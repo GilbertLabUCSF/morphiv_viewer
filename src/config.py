@@ -18,13 +18,37 @@ DATA_EXTRACTED = PROJECT_ROOT / "data_extracted"
 TF_PERTURBSEQ = DATA_ROOT / "tf_perturbseq"
 RESULTS_EBS = TF_PERTURBSEQ / "results" / "EBs"
 RESULTS_IPSC = TF_PERTURBSEQ / "results" / "iPSC"
-VIABILITY_EBS = TF_PERTURBSEQ / "results_dec1" / "EBs" / "viability"
-VIABILITY_IPSC = TF_PERTURBSEQ / "results_dec1" / "iPSC" / "viability"
-DEG_TABLES = TF_PERTURBSEQ / "results_new_GS" / "EBs" / "differential_expression" / "deg_tables"
+
+# Viability — now under results/{cond}/viability/
+VIABILITY_EBS = RESULTS_EBS / "viability"
+VIABILITY_IPSC = RESULTS_IPSC / "viability"
+
+# DEG tables — split per condition
+DEG_TABLES_EBS = RESULTS_EBS / "differential_expression" / "deg_tables"
+DEG_TABLES_IPSC = RESULTS_IPSC / "differential_expression" / "deg_tables"
+
+# New analysis paths — Dose Response
+DOSE_RESPONSE_EBS = RESULTS_EBS / "dose_response"
+DOSE_RESPONSE_IPSC = RESULTS_IPSC / "dose_response"
+
+# Pathway Enrichment
+PATHWAY_ENRICHMENT_EBS = RESULTS_EBS / "pathway_enrichment"
+PATHWAY_ENRICHMENT_IPSC = RESULTS_IPSC / "pathway_enrichment"
+
+# TF Similarity
+TF_SIMILARITY_EBS = RESULTS_EBS / "tf_similarity"
+TF_SIMILARITY_IPSC = RESULTS_IPSC / "tf_similarity"
+
+# Transcriptome E-distance
+TRANSCRIPTOME_EDIST_EBS = RESULTS_EBS / "transcriptome_edist"
+TRANSCRIPTOME_EDIST_IPSC = RESULTS_IPSC / "transcriptome_edist"
+
+# Lineage DE
+LINEAGE_DE_EBS = RESULTS_EBS / "lineage_de"
+LINEAGE_DE_IPSC = RESULTS_IPSC / "lineage_de"
 
 # Pre-generated figures from Snakemake pipeline
 FIGURES_ROOT = TF_PERTURBSEQ / "figures"
-FIGURES_DEC1 = TF_PERTURBSEQ / "figures_dec1"
 
 # Timecourse paths
 TIMECOURSE = DATA_ROOT / "single_cell_timecourse"
@@ -100,48 +124,58 @@ def get_marker_dotplot_path(perturbation: str, condition: str, fmt: str = "png")
 
 
 def get_anchor_dotplot_path(condition: str, variant: str = "standardized", fmt: str = "png") -> Path:
-    """Get path to pre-generated anchor dotplot figure.
-
-    Args:
-        condition: iPSC or EBs
-        variant: standardized, positive, or negative
-        fmt: png or svg
-    """
+    """Get path to pre-generated anchor dotplot figure."""
     return FIGURES_ROOT / "anchor_validation" / f"{condition}_anchor_dotplot_{variant}.{fmt}"
 
 
 def get_spider_plot_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
     """Get path to pre-generated spider plot figure.
 
-    Args:
-        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
-        condition: iPSC or EBs
-        fmt: png or svg
+    Spider plots are now at figures/{condition}/lineage_analysis/spider/{perturbation}_knn_prob_shift.{fmt}
     """
-    return FIGURES_DEC1 / condition / "lineage_analysis" / "spider" / f"{perturbation}.{fmt}"
+    return FIGURES_ROOT / condition / "lineage_analysis" / "spider" / f"{perturbation}_knn_prob_shift.{fmt}"
 
 
 def get_marker_tpm_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated marker TPM validation figure.
-
-    Shows antibody/marker expression levels comparing perturbed vs NTC cells.
-
-    Args:
-        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
-        condition: iPSC or EBs
-        fmt: png or svg
-    """
+    """Get path to pre-generated marker TPM validation figure."""
     return FIGURES_ROOT / condition / "marker_validation" / f"{perturbation}_marker_tpm.{fmt}"
 
 
 def get_antibody_validation_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated antibody validation figure.
-
-    Shows expression of antibody-detectable markers (flow cytometry panels).
-
-    Args:
-        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
-        condition: iPSC or EBs
-        fmt: png or svg
-    """
+    """Get path to pre-generated antibody validation figure."""
     return FIGURES_ROOT / condition / "antibody_validation" / f"{perturbation}_antibody_markers.{fmt}"
+
+
+def get_dose_response_panel_path(condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated dose response overview panel."""
+    return FIGURES_ROOT / condition / "dose_response" / f"dose_response_panel.{fmt}"
+
+
+def get_pathway_heatmap_path(condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated pathway enrichment heatmap."""
+    return FIGURES_ROOT / condition / "pathway_enrichment" / f"pathway_heatmap.{fmt}"
+
+
+def get_tf_similarity_path(condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated TF similarity annotated figure."""
+    return FIGURES_ROOT / condition / "tf_similarity" / f"tf_similarity_annotated.{fmt}"
+
+
+def get_edist_figure_path(condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated transcriptome E-distance overview figure."""
+    return FIGURES_ROOT / condition / "transcriptome_edist" / f"edist_overview.{fmt}"
+
+
+def get_trajectory_figure_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
+    """Get path to pre-generated trajectory figure."""
+    return FIGURES_ROOT / condition / "trajectory" / f"{perturbation}_trajectory.{fmt}"
+
+
+def _get_results_dir(condition: str) -> Path:
+    """Get results directory for a condition."""
+    if condition == "EBs":
+        return RESULTS_EBS
+    elif condition == "iPSC":
+        return RESULTS_IPSC
+    else:
+        raise ValueError(f"Unknown condition: {condition}")
