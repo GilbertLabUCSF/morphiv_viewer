@@ -696,3 +696,262 @@ def plot_umap_highlight(
     fig.update_yaxes(showgrid=False, zeroline=False)
 
     return fig
+
+
+def plot_edist_rank(df: pd.DataFrame, gene: str, condition: str = "EBs") -> go.Figure:
+    """
+    E-distance rank plot — gene highlighted in the all-gene distribution.
+
+    Args:
+        df: Transcriptome E-distance DataFrame (all perturbations for a condition)
+        gene: Gene symbol to highlight
+        condition: Condition label for title
+    """
+    if df is None or len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text=f"No E-distance data for {condition}", showarrow=False)
+        return fig
+
+    df = df.copy()
+    # Extract gene from perturbation
+    df["gene"] = df["perturbation"].str.split("_").str[0]
+    df = df.sort_values("edist_observed")
+    df["rank"] = range(1, len(df) + 1)
+
+    gene_rows = df[df["gene"] == gene]
+
+    fig = go.Figure()
+
+    # All perturbations
+    fig.add_trace(go.Scatter(
+        x=df["rank"],
+        y=df["edist_observed"],
+        mode="markers",
+        marker=dict(size=4, color="#cccccc"),
+        name="All perturbations",
+        hovertemplate="%{customdata}<br>E-dist: %{y:.3f}<extra></extra>",
+        customdata=df["perturbation"],
+    ))
+
+    # Highlight gene
+    if len(gene_rows) > 0:
+        fig.add_trace(go.Scatter(
+            x=gene_rows["rank"],
+            y=gene_rows["edist_observed"],
+            mode="markers",
+            marker=dict(size=12, color="#e74c3c", symbol="diamond"),
+            name=gene,
+            hovertemplate=f"{gene}<br>Rank: %{{x}}<br>E-dist: %{{y:.3f}}<extra></extra>",
+        ))
+
+        for _, row in gene_rows.iterrows():
+            fig.add_annotation(
+                x=row["rank"], y=row["edist_observed"],
+                text=f"{row['perturbation']}",
+                showarrow=True, arrowhead=2, yshift=15,
+                font=dict(size=9),
+            )
+
+    fig.update_layout(
+        title=f"Transcriptome E-distance ({condition})",
+        xaxis_title="Rank",
+        yaxis_title="E-distance (observed)",
+        height=350,
+        showlegend=False,
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+
+    return fig
+
+
+def plot_dose_response_scatter(df: pd.DataFrame, gene: str, condition: str = "EBs") -> go.Figure:
+    """
+    Scatter plot: knockdown_pct vs lineage_effect, gene's perturbations highlighted.
+
+    Args:
+        df: Dose response DataFrame
+        gene: Gene symbol to highlight
+        condition: Condition label for title
+    """
+    if df is None or len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text=f"No dose response data for {condition}", showarrow=False)
+        return fig
+
+    df = df.copy()
+    df["gene"] = df["perturbation"].str.split("_").str[0]
+    df["is_gene"] = df["gene"] == gene
+
+    fig = go.Figure()
+
+    # Background
+    bg = df[~df["is_gene"]]
+    fig.add_trace(go.Scatter(
+        x=bg["knockdown_pct"],
+        y=bg["lineage_effect"],
+        mode="markers",
+        marker=dict(size=4, color="#cccccc", opacity=0.5),
+        name="All perturbations",
+        hovertemplate="%{customdata}<br>KD: %{x:.1f}%<br>Effect: %{y:.3f}<extra></extra>",
+        customdata=bg["perturbation"],
+    ))
+
+    # Highlighted gene
+    fg = df[df["is_gene"]]
+    if len(fg) > 0:
+        fig.add_trace(go.Scatter(
+            x=fg["knockdown_pct"],
+            y=fg["lineage_effect"],
+            mode="markers+text",
+            marker=dict(size=10, color="#e74c3c"),
+            name=gene,
+            text=fg["perturbation"],
+            textposition="top center",
+            textfont=dict(size=9),
+            hovertemplate=f"{gene}<br>KD: %{{x:.1f}}%<br>Effect: %{{y:.3f}}<extra></extra>",
+        ))
+
+    fig.update_layout(
+        title=f"Dose Response ({condition})",
+        xaxis_title="Knockdown %",
+        yaxis_title="Lineage Effect",
+        height=350,
+        showlegend=False,
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+
+    return fig
+
+
+def plot_pathway_enrichment_bars(df: pd.DataFrame, perturbation: str, n_top: int = 15) -> go.Figure:
+    """
+    Horizontal bar chart of top enriched terms by -log10(p-value).
+
+    Args:
+        df: Pathway enrichment DataFrame filtered to perturbation
+        perturbation: Perturbation ID for title
+        n_top: Number of top terms to show
+    """
+    if df is None or len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text=f"No pathway enrichment data for {perturbation}", showarrow=False)
+        return fig
+
+    df = df.copy()
+
+    # Use adjusted_p_value if available, else p_value
+    p_col = "adjusted_p_value" if "adjusted_p_value" in df.columns else "p_value"
+    df["neg_log_p"] = -np.log10(df[p_col].clip(lower=1e-300))
+
+    # Top terms
+    top = df.nlargest(n_top, "neg_log_p")
+    top = top.sort_values("neg_log_p", ascending=True)
+
+    # Truncate long term names
+    top["term_short"] = top["term"].str[:60]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=top["neg_log_p"],
+        y=top["term_short"],
+        orientation="h",
+        marker_color="#3498db",
+        hovertemplate="<b>%{y}</b><br>-log10(p): %{x:.2f}<extra></extra>",
+    ))
+
+    fig.update_layout(
+        title=f"Top Enriched Pathways: {perturbation}",
+        xaxis_title=f"-log10({p_col})",
+        height=max(300, n_top * 25),
+        margin=dict(l=10, r=10, t=40, b=10),
+        yaxis=dict(tickfont=dict(size=10)),
+    )
+
+    return fig
+
+
+def plot_lineage_de_volcano(
+    df: pd.DataFrame,
+    perturbation: str,
+    lineage: str,
+    padj_threshold: float = 0.05,
+    lfc_threshold: float = 1.0,
+) -> go.Figure:
+    """
+    Volcano plot for lineage-specific DE results.
+
+    Uses log2fc/pval/padj column names (lineage DE format).
+    Gene labels show ENSG IDs.
+    """
+    if df is None or len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text=f"No lineage DE data", showarrow=False)
+        return fig
+
+    df = df.copy()
+
+    # Determine column names — lineage DE uses log2fc/padj or log2FoldChange/padj
+    lfc_col = "log2fc" if "log2fc" in df.columns else "log2FoldChange"
+    padj_col = "padj" if "padj" in df.columns else "pvalue"
+    gene_col = "gene" if "gene" in df.columns else df.columns[0]
+
+    if lfc_col not in df.columns or padj_col not in df.columns:
+        fig = go.Figure()
+        fig.add_annotation(text="Missing required columns (log2fc, padj)", showarrow=False)
+        return fig
+
+    df["neg_log_padj"] = -np.log10(df[padj_col].clip(lower=1e-300))
+
+    df["category"] = "Not significant"
+    df.loc[(df[padj_col] < padj_threshold) & (df[lfc_col] > lfc_threshold), "category"] = "Up"
+    df.loc[(df[padj_col] < padj_threshold) & (df[lfc_col] < -lfc_threshold), "category"] = "Down"
+
+    color_map = {
+        "Not significant": "#cccccc",
+        "Up": "#e74c3c",
+        "Down": "#3498db",
+    }
+
+    fig = px.scatter(
+        df,
+        x=lfc_col,
+        y="neg_log_padj",
+        color="category",
+        color_discrete_map=color_map,
+        hover_data=[gene_col],
+        labels={
+            lfc_col: "Log2 Fold Change",
+            "neg_log_padj": "-Log10 Adjusted P-value",
+        },
+    )
+
+    fig.add_hline(y=-np.log10(padj_threshold), line_dash="dash", line_color="gray")
+    fig.add_vline(x=lfc_threshold, line_dash="dash", line_color="gray")
+    fig.add_vline(x=-lfc_threshold, line_dash="dash", line_color="gray")
+
+    # Label top genes (ENSG IDs)
+    top_genes = df.nlargest(5, "neg_log_padj")
+    for _, row in top_genes.iterrows():
+        gene_label = str(row.get(gene_col, ""))[:15]
+        fig.add_annotation(
+            x=row[lfc_col],
+            y=row["neg_log_padj"],
+            text=gene_label,
+            showarrow=True,
+            arrowhead=0,
+            font=dict(size=8),
+        )
+
+    n_up = (df["category"] == "Up").sum()
+    n_down = (df["category"] == "Down").sum()
+
+    fig.update_layout(
+        title=f"Lineage DE: {perturbation} / {lineage} ({n_up} up, {n_down} down)",
+        height=400,
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        margin=dict(l=10, r=10, t=60, b=10),
+    )
+
+    return fig

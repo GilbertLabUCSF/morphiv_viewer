@@ -24,6 +24,9 @@ from .data_loader import (
 )
 from .config import LINEAGES
 
+# Note: load_deg_table now accepts an optional condition parameter.
+# When called without condition (as below), it searches both EBs and iPSC.
+
 
 def get_openai_client():
     """Get OpenAI client, checking for API key in secrets or environment."""

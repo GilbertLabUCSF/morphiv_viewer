@@ -12,12 +12,23 @@ import streamlit as st
 
 from .config import (
     DATA_EXTRACTED,
-    DEG_TABLES,
+    DEG_TABLES_EBS,
+    DEG_TABLES_IPSC,
+    DOSE_RESPONSE_EBS,
+    DOSE_RESPONSE_IPSC,
+    LINEAGE_DE_EBS,
+    LINEAGE_DE_IPSC,
+    PATHWAY_ENRICHMENT_EBS,
+    PATHWAY_ENRICHMENT_IPSC,
     RESULTS_EBS,
     RESULTS_IPSC,
+    TF_PERTURBSEQ,
+    TF_SIMILARITY_EBS,
+    TF_SIMILARITY_IPSC,
+    TRANSCRIPTOME_EDIST_EBS,
+    TRANSCRIPTOME_EDIST_IPSC,
     VIABILITY_EBS,
     VIABILITY_IPSC,
-    TF_PERTURBSEQ,
 )
 
 
@@ -180,7 +191,7 @@ def load_compositional() -> pd.DataFrame:
         dfs.append(ipsc)
 
     if not dfs:
-        raise FileNotFoundError("NEEDS IMPLEMENTATION: No compositional analysis files found")
+        raise FileNotFoundError("No compositional analysis files found")
 
     df = pd.concat(dfs, ignore_index=True)
 
@@ -190,9 +201,14 @@ def load_compositional() -> pd.DataFrame:
     return df
 
 
-def load_deg_table(perturbation: str) -> Optional[pd.DataFrame]:
+def load_deg_table(perturbation: str, condition: str = None) -> Optional[pd.DataFrame]:
     """
     Load DEG table for a specific perturbation.
+
+    Args:
+        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
+        condition: Optional condition to search ("EBs" or "iPSC").
+                   If None, searches both and returns first found.
 
     Returns DataFrame with columns:
     - gene, baseMean, log2FoldChange, lfcSE, pvalue, padj
@@ -200,22 +216,159 @@ def load_deg_table(perturbation: str) -> Optional[pd.DataFrame]:
 
     Returns None if no DEG data exists for this perturbation.
     """
-    # Try exact match first
-    deg_path = DEG_TABLES / f"{perturbation}_deg.csv"
+    search_dirs = []
+    if condition == "EBs":
+        search_dirs = [DEG_TABLES_EBS]
+    elif condition == "iPSC":
+        search_dirs = [DEG_TABLES_IPSC]
+    else:
+        search_dirs = [DEG_TABLES_EBS, DEG_TABLES_IPSC]
 
-    if not deg_path.exists():
-        # Try without the isoform suffix (e.g., "SOX2_P1P2" -> check for "SOX2_P1P2_deg.csv")
-        possible_files = list(DEG_TABLES.glob(f"{perturbation}*_deg.csv"))
+    for deg_dir in search_dirs:
+        if not deg_dir.exists():
+            continue
+
+        deg_path = deg_dir / f"{perturbation}_deg.csv"
+        if deg_path.exists():
+            return pd.read_csv(deg_path)
+
+        # Try glob match
+        possible_files = list(deg_dir.glob(f"{perturbation}*_deg.csv"))
         if possible_files:
-            deg_path = possible_files[0]
-        else:
-            return None
+            return pd.read_csv(possible_files[0])
 
-    if not deg_path.exists():
+    return None
+
+
+@st.cache_data(ttl=3600)
+def load_dose_response(condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load dose response data for a condition.
+
+    Returns DataFrame with columns:
+    - perturbation, knockdown_pct, lineage_effect, e_distance
+    """
+    dr_dir = DOSE_RESPONSE_EBS if condition == "EBs" else DOSE_RESPONSE_IPSC
+    path = dr_dir / f"{condition}_dose_response.csv"
+
+    if not path.exists():
         return None
 
-    df = pd.read_csv(deg_path)
-    return df
+    return pd.read_csv(path)
+
+
+@st.cache_data(ttl=3600)
+def load_pathway_enrichment(condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load pathway enrichment results for a condition.
+
+    Returns DataFrame with columns:
+    - perturbation, term, gene_set_library, p_value, adjusted_p_value,
+      overlap, genes, Odds Ratio, Combined Score
+    """
+    pe_dir = PATHWAY_ENRICHMENT_EBS if condition == "EBs" else PATHWAY_ENRICHMENT_IPSC
+    path = pe_dir / f"{condition}_enrichment_results.csv"
+
+    if not path.exists():
+        return None
+
+    return pd.read_csv(path)
+
+
+@st.cache_data(ttl=3600)
+def load_transcriptome_edist(condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load transcriptome E-distance data for a condition.
+
+    Returns DataFrame with columns:
+    - perturbation, n_cells, edist_observed, edist_null_mean, edist_null_std,
+      p_value, q_value
+    """
+    ed_dir = TRANSCRIPTOME_EDIST_EBS if condition == "EBs" else TRANSCRIPTOME_EDIST_IPSC
+    path = ed_dir / f"{condition}_tedist_merged.csv"
+
+    if not path.exists():
+        return None
+
+    return pd.read_csv(path)
+
+
+@st.cache_data(ttl=3600)
+def load_tf_clusters(condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load TF cluster assignments for a condition.
+
+    Returns DataFrame with columns:
+    - perturbation, cluster
+    """
+    tf_dir = TF_SIMILARITY_EBS if condition == "EBs" else TF_SIMILARITY_IPSC
+    path = tf_dir / f"{condition}_tf_clusters.csv"
+
+    if not path.exists():
+        return None
+
+    return pd.read_csv(path)
+
+
+def load_lineage_de(perturbation: str, lineage: str, condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load lineage-specific DE results for a perturbation.
+
+    Args:
+        perturbation: Perturbation ID (e.g., "SOX2_P1P2")
+        lineage: Lineage name (e.g., "Neural_Ectoderm")
+        condition: "EBs" or "iPSC"
+
+    Returns DataFrame with columns:
+    - gene (ENSG IDs), baseMean, log2fc, lfcSE, stat, pval, padj, is_deg
+    """
+    de_dir = LINEAGE_DE_EBS if condition == "EBs" else LINEAGE_DE_IPSC
+    path = de_dir / f"{perturbation}_{lineage}_DE.csv"
+
+    if not path.exists():
+        return None
+
+    return pd.read_csv(path)
+
+
+def load_double_diff(perturbation: str, lineage1: str, lineage2: str, condition: str) -> Optional[pd.DataFrame]:
+    """
+    Load double differential results between two lineages.
+
+    Returns DataFrame with columns:
+    - double_diff, abs_double_diff, is_significant
+    """
+    de_dir = LINEAGE_DE_EBS if condition == "EBs" else LINEAGE_DE_IPSC
+    path = de_dir / f"{perturbation}_{lineage1}_vs_{lineage2}_double_diff.csv"
+
+    if not path.exists():
+        return None
+
+    return pd.read_csv(path)
+
+
+def get_available_lineage_de(perturbation: str, condition: str) -> list[str]:
+    """
+    Get list of lineages with DE data for a perturbation.
+
+    Checks which {perturbation}_{lineage}_DE.csv files exist.
+    """
+    de_dir = LINEAGE_DE_EBS if condition == "EBs" else LINEAGE_DE_IPSC
+
+    if not de_dir.exists():
+        return []
+
+    lineages = []
+    for f in de_dir.glob(f"{perturbation}_*_DE.csv"):
+        # Extract lineage name: {perturbation}_{lineage}_DE.csv
+        name = f.stem  # e.g., "SOX2_P1P2_Neural_Ectoderm_DE"
+        # Remove perturbation prefix and _DE suffix
+        suffix = name[len(perturbation) + 1:]  # e.g., "Neural_Ectoderm_DE"
+        if suffix.endswith("_DE"):
+            lineage = suffix[:-3]  # e.g., "Neural_Ectoderm"
+            lineages.append(lineage)
+
+    return sorted(lineages)
 
 
 @st.cache_data(ttl=3600)
@@ -232,7 +385,7 @@ def load_timecourse_expression() -> pd.DataFrame:
 
     if not path.exists():
         raise FileNotFoundError(
-            "NEEDS IMPLEMENTATION: Timecourse expression not extracted. "
+            "Timecourse expression not extracted. "
             "Run: python scripts/extract_timecourse_expression.py"
         )
 
@@ -330,8 +483,6 @@ def load_marker_counts(perturbation: str, condition: str) -> Optional[pd.DataFra
     """
     Load marker expression counts for a specific perturbation.
 
-    Used for generating dynamic dotplots.
-
     Returns DataFrame with columns:
     - gene, raw_counts, cpm, n_cells, condition
 
@@ -354,11 +505,6 @@ def load_umap_coordinates(condition: str, max_cells: int = 50000) -> Optional[pd
 
     First tries pre-extracted parquet (fast), then falls back to h5ad (slow but works).
     Uses subsampling to keep memory/speed reasonable.
-
-    Returns DataFrame with columns:
-    - umap_1, umap_2, perturbation, cell_type, etc.
-
-    Returns None if no data available.
     """
     # Try pre-extracted first (fast path)
     path = DATA_EXTRACTED / f"umap_coordinates_{condition}.parquet"
