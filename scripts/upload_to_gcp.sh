@@ -156,7 +156,7 @@ for COND in EBs iPSC; do
         echo "  Uploading $REMOTE_NAME ($(du -h "$H5AD_FILE" | cut -f1))..."
         $GCLOUD compute scp --zone "$GCP_ZONE" --project "$GCP_PROJECT" \
           "$H5AD_FILE" \
-          "$GCP_INSTANCE:/opt/morphic/cellxgene/$REMOTE_NAME"
+          "$GCP_INSTANCE:/home/ashir/cellxgene_data/$REMOTE_NAME"
     fi
 done
 
@@ -167,14 +167,14 @@ if [ -f "$TC_H5AD" ]; then
     echo "  Uploading $TC_REMOTE_NAME ($(du -h "$TC_H5AD" | cut -f1))..."
     $GCLOUD compute scp --zone "$GCP_ZONE" --project "$GCP_PROJECT" \
       "$TC_H5AD" \
-      "$GCP_INSTANCE:/opt/morphic/cellxgene/$TC_REMOTE_NAME"
+      "$GCP_INSTANCE:/home/ashir/cellxgene_data/$TC_REMOTE_NAME"
 fi
 
 # Configure CellxGene Gateway to serve new files
 echo "[12/12] Configuring CellxGene..."
 $GCLOUD compute ssh --zone "$GCP_ZONE" "$GCP_INSTANCE" --project "$GCP_PROJECT" -- "
 # Remove old h5ad files if they exist
-rm -f /opt/morphic/cellxgene/nov20_*.h5ad 2>/dev/null || true
+rm -f /home/ashir/cellxgene_data/nov20_*.h5ad 2>/dev/null || true
 
 # Restart cellxgene gateway if running
 if systemctl is-active --quiet cellxgene-gateway; then
