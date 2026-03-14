@@ -11,33 +11,14 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS with Google Fonts (shared across pages)
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-}
-
-.stDataFrame {
-    font-family: 'Inter', sans-serif;
-}
-
-footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
-
 # Add src to path
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.styles import inject_css
+from src.components import render_sidebar
+inject_css()
 
 from src.data_loader import load_lineage_analysis, load_knockdown_efficiency, get_perturbations_for_gene
 from src.config import CONDITIONS, LINEAGES, EFFECT_SIZES, get_spider_plot_path
@@ -109,9 +90,7 @@ st.divider()
 st.subheader(f"Results: {filtered_df['gene'].nunique()} genes")
 
 # Create summary table (one row per gene)
-# Note: n_cells is per perturbation (same value repeated per lineage), so we sum unique values per condition
 def sum_unique_cells(group):
-    # Get unique n_cells per (perturbation, condition) to avoid counting same cells multiple times
     return group.groupby(["perturbation", "condition"])["n_cells"].first().sum()
 
 # Get max absolute Glass's delta per gene
@@ -121,13 +100,11 @@ max_glass_delta = (
     .reset_index(name="max_glass_delta")
 )
 
-# Get lineage effects per gene (glass delta per lineage, take max across perturbations/conditions)
+# Get lineage effects per gene
 def get_lineage_effects(group):
-    """Get glass delta for each lineage, keeping sign of the value with max absolute magnitude."""
     effects = {}
     for lineage in group["lineage"].unique():
         lineage_data = group[group["lineage"] == lineage]
-        # Find the value with the largest absolute magnitude, but keep its sign
         deltas = lineage_data["observed_glass_delta"]
         idx_max_abs = deltas.abs().idxmax()
         effects[lineage] = deltas.loc[idx_max_abs]
@@ -151,13 +128,12 @@ summary_df = summary_df.merge(cell_counts, on="gene")
 summary_df = summary_df.merge(max_glass_delta, on="gene")
 summary_df = summary_df.merge(lineage_effects, on="gene")
 
-summary_df.columns = ["Gene", "Perturbation", "Conditions", "Total Cells", "Max |Δ|", "Lineage Effects"]
+summary_df.columns = ["Gene", "Perturbation", "Conditions", "Total Cells", "Max |\u0394|", "Lineage Effects"]
 
 # Sort by max glass delta
-summary_df = summary_df.sort_values("Max |Δ|", ascending=False)
+summary_df = summary_df.sort_values("Max |\u0394|", ascending=False)
 
 # Format lineage effects as colored text
-# Short lineage names for display
 LINEAGE_SHORT = {
     "Amnion": "Amn",
     "Epiblast": "Epi",
@@ -169,29 +145,25 @@ LINEAGE_SHORT = {
 }
 
 def format_lineage_effects(effects_dict):
-    """Format lineage effects as text with indicators."""
     if not effects_dict:
         return ""
 
     parts = []
-    # Sort by absolute effect size
     sorted_lineages = sorted(effects_dict.items(), key=lambda x: abs(x[1]), reverse=True)
 
     for lineage, delta in sorted_lineages:
         short_name = LINEAGE_SHORT.get(lineage, lineage[:4])
         abs_delta = abs(delta)
 
-        # Only show effects with |Δ| > 0.5
         if abs_delta < 0.5:
             continue
 
-        # Simple arrows: ▲ for increased, ▼ for decreased
         if delta > 0:
-            parts.append(f"▲{short_name}")
+            parts.append(f"\u25b2{short_name}")
         else:
-            parts.append(f"▼{short_name}")
+            parts.append(f"\u25bc{short_name}")
 
-    return " ".join(parts) if parts else "—"
+    return " ".join(parts) if parts else "\u2014"
 
 # Display as interactive dataframe with clickable gene links
 display_df = summary_df.copy()
@@ -207,15 +179,15 @@ st.dataframe(
             "Gene",
             display_text=r"/Gene_Detail\?gene=(.+)",
         ),
-        "Max |Δ|": st.column_config.NumberColumn(format="%.2f"),
+        "Max |\u0394|": st.column_config.NumberColumn(format="%.2f"),
         "Total Cells": st.column_config.NumberColumn(format="%d"),
     },
     hide_index=True,
     use_container_width=True,
 )
-st.caption("Click a gene name to view details. Lineage effects: ▲ increased, ▼ decreased (|Δ| > 0.5)")
+st.caption("Click a gene name to view details. Lineage effects: \u25b2 increased, \u25bc decreased (|\u0394| > 0.5)")
 
-# Download button - prepare clean CSV without dict column
+# Download button
 download_df = summary_df.drop(columns=["Lineage Effects"]).copy()
 st.download_button(
     label="Download Filtered Results (CSV)",
@@ -251,27 +223,11 @@ if len(summary_df) > 0:
         except Exception:
             pass
 
-# Sidebar
+# Sidebar with quick stats
+render_sidebar()
+
 with st.sidebar:
-    st.markdown("### 🧬 MORPHIC Portal")
-    st.caption("TF Perturbation Screen Explorer")
-
     st.divider()
-
-    st.markdown("**Pages**")
-    st.page_link("app.py", label="Home", icon="🏠")
-    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
-    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
-
-    st.divider()
-
     st.markdown("**Quick Stats**")
     st.metric("Genes shown", filtered_df["gene"].nunique())
     st.metric("Perturbations", filtered_df["perturbation"].nunique())
-
-    st.divider()
-
-    st.markdown("**Resources**")
-    st.link_button("GeneCards", "https://www.genecards.org/", use_container_width=True)
-    st.link_button("DepMap", "https://depmap.org/", use_container_width=True)
-    st.link_button("NCBI Gene", "https://www.ncbi.nlm.nih.gov/gene/", use_container_width=True)

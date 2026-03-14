@@ -11,109 +11,16 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS with Google Fonts
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-/* Global font */
-html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* Headers */
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-}
-
-/* Main title styling */
-.main-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Subtitle */
-.subtitle {
-    font-size: 1.1rem;
-    color: #94a3b8;
-    font-weight: 400;
-    margin-bottom: 2rem;
-}
-
-/* Metric cards */
-.metric-card {
-    background: linear-gradient(135deg, rgba(51, 65, 85, 0.5) 0%, rgba(30, 41, 59, 0.5) 100%);
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    border-radius: 12px;
-    padding: 1.25rem;
-    text-align: center;
-}
-
-.metric-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #f1f5f9;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: -0.02em;
-}
-
-.metric-label {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 0.25rem;
-}
-
-/* Section headers */
-.section-header {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin: 2rem 0 1rem 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-/* Info cards */
-.info-card {
-    background: rgba(51, 65, 85, 0.3);
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 0.5rem 0;
-}
-
-/* Hide footer only */
-footer {visibility: hidden;}
-
-/* Improve dataframe styling */
-.stDataFrame {
-    font-family: 'Inter', sans-serif;
-}
-
-/* Button styling */
-.stButton>button {
-    font-family: 'Inter', sans-serif;
-    font-weight: 500;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # Add src to path
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.styles import inject_css
+from src.components import render_sidebar
 from src.data_loader import get_gene_list, get_summary_stats
+
+inject_css()
 
 # Title with custom styling
 st.markdown('<p class="main-title">MORPHIC TF Perturbation Screen</p>', unsafe_allow_html=True)
@@ -173,12 +80,17 @@ with left_col:
         ("Lineage Analysis", "Distributional effects on 6 developmental lineages"),
         ("Knockdown Efficiency", "Target gene knockdown validation"),
         ("Viability Scores", "LFC-based cell fitness measurements"),
-        ("Differential Expression", "Per-perturbation DEG analysis"),
+        ("Differential Expression", "Per-perturbation DEG analysis (EBs & iPSC)"),
         ("Timecourse Expression", "Gene expression across differentiation"),
+        ("Dose Response", "Knockdown efficiency vs lineage effect relationship"),
+        ("Lineage-Specific DE", "DE within individual lineages (perturbed vs NTC)"),
+        ("Pathway Enrichment", "Gene set enrichment of perturbation DEGs"),
+        ("TF Similarity", "Clustering of TFs by shared transcriptomic signatures"),
+        ("Transcriptome E-distance", "Global transcriptome shift per perturbation"),
     ]
 
     for title, desc in data_types:
-        st.markdown(f"**{title}** — {desc}")
+        st.markdown(f"**{title}** \u2014 {desc}")
 
 with right_col:
     st.markdown('<p class="section-header">Quick Gene Search</p>', unsafe_allow_html=True)
@@ -198,7 +110,7 @@ with right_col:
             if selected_gene:
                 st.session_state["selected_gene"] = selected_gene
                 st.success(f"**{selected_gene}** selected")
-                st.page_link("pages/2_Gene_Detail.py", label="View Gene Details →", icon="🧬")
+                st.page_link("pages/2_Gene_Detail.py", label="View Gene Details \u2192", icon="\U0001f9ec")
 
         else:
             st.warning("No genes found. Check data sources.")
@@ -209,39 +121,20 @@ with right_col:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<p class="section-header">Navigation</p>', unsafe_allow_html=True)
 
-    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
+    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="\U0001f50d")
     st.markdown("Filter and explore all perturbed TFs", help=None)
 
-    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
+    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="\U0001f9ec")
     st.markdown("Detailed view with perturbation effects")
 
 # Footer
 st.markdown("---")
 st.markdown(
     '<p style="text-align: center; color: #64748b; font-size: 0.85rem;">'
-    'MorPhiC Consortium — Molecular Phenotypes of Null Alleles in Cells'
+    'MorPhiC Consortium \u2014 Molecular Phenotypes of Null Alleles in Cells'
     '</p>',
     unsafe_allow_html=True
 )
 
 # Sidebar
-with st.sidebar:
-    st.markdown("### 🧬 MORPHIC Portal")
-    st.caption("TF Perturbation Screen Explorer")
-
-    st.divider()
-
-    st.markdown("**Pages**")
-    st.page_link("app.py", label="Home", icon="🏠")
-    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
-    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
-
-    st.divider()
-
-    st.markdown("**Resources**")
-    st.link_button("GeneCards", "https://www.genecards.org/", use_container_width=True)
-    st.link_button("DepMap", "https://depmap.org/", use_container_width=True)
-    st.link_button("NCBI Gene", "https://www.ncbi.nlm.nih.gov/gene/", use_container_width=True)
-
-    st.divider()
-    st.caption("v0.1.0")
+render_sidebar()

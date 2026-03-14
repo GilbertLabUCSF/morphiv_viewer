@@ -11,33 +11,14 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS with Google Fonts (shared across pages)
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-}
-
-.stDataFrame {
-    font-family: 'Inter', sans-serif;
-}
-
-footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
-
 # Add src to path
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.styles import inject_css
+from src.components import render_sidebar
+inject_css()
 
 from src.data_loader import (
     get_gene_list,
@@ -48,6 +29,12 @@ from src.data_loader import (
     load_compositional,
     load_deg_table,
     load_timecourse_expression,
+    load_dose_response,
+    load_pathway_enrichment,
+    load_transcriptome_edist,
+    load_tf_clusters,
+    load_lineage_de,
+    get_available_lineage_de,
 )
 from src.plots import (
     plot_lineage_heatmap,
@@ -56,16 +43,19 @@ from src.plots import (
     plot_deg_volcano,
     plot_timecourse_expression,
     plot_compositional_bars,
+    plot_edist_rank,
+    plot_dose_response_scatter,
+    plot_pathway_enrichment_bars,
+    plot_lineage_de_volcano,
 )
 from src.config import (
-    get_genecards_url,
-    get_depmap_url,
-    get_ncbi_gene_url,
     get_umap_highlight_path,
     get_marker_dotplot_path,
     get_spider_plot_path,
     get_marker_tpm_path,
     get_antibody_validation_path,
+    get_tf_similarity_path,
+    CONDITIONS,
 )
 from src.gene_summary import render_gene_summary_section
 
@@ -111,7 +101,6 @@ st.header(gene)
 
 # Helper function for knockdown category
 def get_knockdown_category(pct):
-    """Categorize knockdown efficiency: >90% excellent, 70-90% good, 30-70% moderate, <30% poor"""
     if pct >= 90:
         return "Excellent"
     elif pct >= 70:
@@ -158,7 +147,7 @@ except Exception:
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric("Glass's Δ (max)", f"{glass_delta_max:.2f}" if glass_delta_max is not None else "N/A")
+    st.metric("Glass's \u0394 (max)", f"{glass_delta_max:.2f}" if glass_delta_max is not None else "N/A")
 
 with col2:
     val = via_values["iPSC"]
@@ -185,9 +174,11 @@ with col5:
 st.divider()
 
 # Tabs for different views
-tab_overview, tab_perturbation, tab_markers, tab_timecourse, tab_cellxgene = st.tabs([
+tab_overview, tab_perturbation, tab_lineage_de, tab_pathway, tab_markers, tab_timecourse, tab_cellxgene = st.tabs([
     "Overview",
     "Perturbation Effects",
+    "Lineage DE",
+    "Pathway Enrichment",
     "Marker Expression",
     "Timecourse",
     "CellxGene",
@@ -195,9 +186,7 @@ tab_overview, tab_perturbation, tab_markers, tab_timecourse, tab_cellxgene = st.
 
 # ============ OVERVIEW TAB ============
 with tab_overview:
-    # AI-powered gene summary (general gene info - not perturbation specific)
     render_gene_summary_section(gene)
-
 
 
 # ============ PERTURBATION TAB ============
@@ -209,11 +198,10 @@ with tab_perturbation:
     except Exception:
         perturbations = []
 
-    # UMAP Highlight section - use pre-generated images from Snakemake pipeline
+    # UMAP Highlight section
     st.subheader("Cell Distribution (UMAP)")
 
     if perturbations:
-        # Select perturbation for UMAP
         umap_pert = st.selectbox(
             "Select perturbation:",
             options=perturbations,
@@ -242,7 +230,7 @@ with tab_perturbation:
 
     st.divider()
 
-    # Spider Plot section - lineage effects visualization
+    # Spider Plot section
     st.subheader("Lineage Effects (Spider Plot)")
 
     if perturbations:
@@ -274,7 +262,7 @@ with tab_perturbation:
 
     st.divider()
 
-    # Marker Dotplot section - use pre-generated images from Snakemake pipeline
+    # Marker Dotplot section
     st.subheader("Marker Gene Expression (Dotplot)")
 
     if perturbations:
@@ -284,7 +272,6 @@ with tab_perturbation:
             key="marker_pert_select",
         )
 
-        # EBs dotplot - full width
         st.markdown("**EBs**")
         dotplot_path_ebs = get_marker_dotplot_path(marker_pert, "EBs")
         if dotplot_path_ebs.exists():
@@ -292,7 +279,6 @@ with tab_perturbation:
         else:
             st.info(f"No marker dotplot for {marker_pert} in EBs")
 
-        # iPSC dotplot - full width
         st.markdown("**iPSC**")
         dotplot_path_ipsc = get_marker_dotplot_path(marker_pert, "iPSC")
         if dotplot_path_ipsc.exists():
@@ -307,12 +293,10 @@ with tab_perturbation:
         gene_lineage = lineage_df[lineage_df["gene"] == gene]
 
         if len(gene_lineage) > 0:
-            # Lineage heatmap
             st.subheader("Lineage Effects")
             fig = plot_lineage_heatmap(gene_lineage, gene)
             st.plotly_chart(fig, use_container_width=True)
 
-            # Detailed table
             with st.expander("View detailed metrics"):
                 display_cols = [
                     "perturbation", "condition", "lineage", "n_cells",
@@ -321,7 +305,6 @@ with tab_perturbation:
                 ]
                 available_cols = [c for c in display_cols if c in gene_lineage.columns]
                 st.dataframe(gene_lineage[available_cols], use_container_width=True)
-
         else:
             st.warning(f"No lineage analysis data for {gene}")
 
@@ -369,50 +352,284 @@ with tab_perturbation:
 
     st.divider()
 
-    # DEG volcano
+    # Transcriptome E-distance
+    st.subheader("Transcriptome E-distance")
+
+    edist_col1, edist_col2 = st.columns(2)
+
+    with edist_col1:
+        try:
+            edist_ebs = load_transcriptome_edist("EBs")
+            if edist_ebs is not None:
+                fig = plot_edist_rank(edist_ebs, gene, "EBs")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No E-distance data for EBs")
+        except Exception as e:
+            st.warning(f"E-distance (EBs) not available: {e}")
+
+    with edist_col2:
+        try:
+            edist_ipsc = load_transcriptome_edist("iPSC")
+            if edist_ipsc is not None:
+                fig = plot_edist_rank(edist_ipsc, gene, "iPSC")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No E-distance data for iPSC")
+        except Exception as e:
+            st.warning(f"E-distance (iPSC) not available: {e}")
+
+    st.divider()
+
+    # Dose Response
+    st.subheader("Dose Response")
+
+    dr_col1, dr_col2 = st.columns(2)
+
+    with dr_col1:
+        try:
+            dr_ebs = load_dose_response("EBs")
+            if dr_ebs is not None:
+                fig = plot_dose_response_scatter(dr_ebs, gene, "EBs")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No dose response data for EBs")
+        except Exception as e:
+            st.warning(f"Dose response (EBs) not available: {e}")
+
+    with dr_col2:
+        try:
+            dr_ipsc = load_dose_response("iPSC")
+            if dr_ipsc is not None:
+                fig = plot_dose_response_scatter(dr_ipsc, gene, "iPSC")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No dose response data for iPSC")
+        except Exception as e:
+            st.warning(f"Dose response (iPSC) not available: {e}")
+
+    st.divider()
+
+    # TF Similarity
+    st.subheader("TF Similarity")
+
+    tf_col1, tf_col2 = st.columns(2)
+
+    for col, cond in [(tf_col1, "EBs"), (tf_col2, "iPSC")]:
+        with col:
+            st.markdown(f"**{cond}**")
+            try:
+                tf_df = load_tf_clusters(cond)
+                if tf_df is not None:
+                    tf_df["gene_name"] = tf_df["perturbation"].str.split("_").str[0]
+                    gene_tf = tf_df[tf_df["gene_name"] == gene]
+                    if len(gene_tf) > 0:
+                        for _, row in gene_tf.iterrows():
+                            st.metric(f"{row['perturbation']}", f"Cluster {row['cluster']}")
+                    else:
+                        st.info(f"No TF cluster data for {gene} in {cond}")
+
+                    # Show overview figure if available
+                    tf_fig_path = get_tf_similarity_path(cond)
+                    if tf_fig_path.exists():
+                        with st.expander("TF Similarity Overview"):
+                            st.image(str(tf_fig_path), use_container_width=True)
+                else:
+                    st.info(f"No TF similarity data for {cond}")
+            except Exception as e:
+                st.warning(f"TF similarity ({cond}) not available: {e}")
+
+    st.divider()
+
+    # DEG volcano — with condition toggle
     st.subheader("Differential Expression")
 
-    # Get perturbation IDs for this gene
     try:
         pert_info = get_perturbations_for_gene(gene)
         perturbations = pert_info["perturbations"]
 
         if perturbations:
-            selected_pert = st.selectbox(
-                "Select perturbation:",
-                options=perturbations,
-                key="deg_pert_select",
-            )
+            deg_col1, deg_col2 = st.columns([2, 1])
+            with deg_col1:
+                selected_pert = st.selectbox(
+                    "Select perturbation:",
+                    options=perturbations,
+                    key="deg_pert_select",
+                )
+            with deg_col2:
+                deg_condition = st.selectbox(
+                    "Condition:",
+                    options=["EBs", "iPSC"],
+                    key="deg_cond_select",
+                )
 
-            deg_df = load_deg_table(selected_pert)
+            deg_df = load_deg_table(selected_pert, condition=deg_condition)
 
             if deg_df is not None:
-                fig = plot_deg_volcano(deg_df, selected_pert)
+                fig = plot_deg_volcano(deg_df, f"{selected_pert} ({deg_condition})")
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Download button
                 st.download_button(
                     "Download DEG table",
                     data=deg_df.to_csv(index=False),
-                    file_name=f"{selected_pert}_degs.csv",
+                    file_name=f"{selected_pert}_{deg_condition}_degs.csv",
                     mime="text/csv",
                 )
 
-                # Show top DEGs
                 with st.expander("Top differentially expressed genes"):
                     if "padj" in deg_df.columns:
                         top_degs = deg_df.nsmallest(20, "padj")
                     else:
                         top_degs = deg_df.head(20)
-
                     st.dataframe(top_degs, use_container_width=True)
             else:
-                st.warning(f"No DEG data available for {selected_pert}")
+                st.warning(f"No DEG data available for {selected_pert} in {deg_condition}")
         else:
             st.warning("No perturbations found for this gene")
 
     except Exception as e:
         st.warning(f"DEG data not available: {e}")
+
+
+# ============ LINEAGE DE TAB ============
+with tab_lineage_de:
+    st.subheader("Lineage-Specific Differential Expression")
+
+    st.markdown("""
+    Differential expression analysis within specific lineages, comparing perturbed vs NTC cells
+    that are assigned to the same lineage. Gene IDs are Ensembl (ENSG) identifiers.
+    """)
+
+    try:
+        pert_info = get_perturbations_for_gene(gene)
+        perturbations_lde = pert_info["perturbations"]
+    except Exception:
+        perturbations_lde = []
+
+    if perturbations_lde:
+        lde_col1, lde_col2, lde_col3 = st.columns([2, 1, 1])
+
+        with lde_col1:
+            lde_pert = st.selectbox(
+                "Select perturbation:",
+                options=perturbations_lde,
+                key="lde_pert_select",
+            )
+
+        with lde_col2:
+            lde_cond = st.selectbox(
+                "Condition:",
+                options=["EBs", "iPSC"],
+                key="lde_cond_select",
+            )
+
+        # Dynamically list available lineages
+        available_lineages = get_available_lineage_de(lde_pert, lde_cond)
+
+        if available_lineages:
+            with lde_col3:
+                lde_lineage = st.selectbox(
+                    "Lineage:",
+                    options=available_lineages,
+                    key="lde_lineage_select",
+                )
+
+            lde_df = load_lineage_de(lde_pert, lde_lineage, lde_cond)
+
+            if lde_df is not None:
+                fig = plot_lineage_de_volcano(lde_df, lde_pert, lde_lineage)
+                st.plotly_chart(fig, use_container_width=True)
+
+                with st.expander("Top DEGs"):
+                    padj_col = "padj" if "padj" in lde_df.columns else "pval"
+                    if padj_col in lde_df.columns:
+                        top = lde_df.nsmallest(20, padj_col)
+                    else:
+                        top = lde_df.head(20)
+                    st.dataframe(top, use_container_width=True)
+
+                st.download_button(
+                    "Download Lineage DE table",
+                    data=lde_df.to_csv(index=False),
+                    file_name=f"{lde_pert}_{lde_lineage}_{lde_cond}_lineage_de.csv",
+                    mime="text/csv",
+                )
+            else:
+                st.warning(f"No lineage DE data for {lde_pert} / {lde_lineage} in {lde_cond}")
+        else:
+            st.info(f"No lineage DE data available for {lde_pert} in {lde_cond}")
+    else:
+        st.warning(f"No perturbations found for {gene}")
+
+
+# ============ PATHWAY ENRICHMENT TAB ============
+with tab_pathway:
+    st.subheader("Pathway Enrichment Analysis")
+
+    st.markdown("""
+    Gene set enrichment analysis of differentially expressed genes per perturbation.
+    Shows top enriched pathways/terms ranked by significance.
+    """)
+
+    try:
+        pert_info = get_perturbations_for_gene(gene)
+        perturbations_pe = pert_info["perturbations"]
+    except Exception:
+        perturbations_pe = []
+
+    if perturbations_pe:
+        pe_col1, pe_col2 = st.columns([2, 1])
+
+        with pe_col1:
+            pe_pert = st.selectbox(
+                "Select perturbation:",
+                options=perturbations_pe,
+                key="pe_pert_select",
+            )
+
+        with pe_col2:
+            pe_cond = st.selectbox(
+                "Condition:",
+                options=["EBs", "iPSC"],
+                key="pe_cond_select",
+            )
+
+        pe_df = load_pathway_enrichment(pe_cond)
+
+        if pe_df is not None:
+            # Filter to selected perturbation
+            pe_filtered = pe_df[pe_df["perturbation"] == pe_pert]
+
+            if len(pe_filtered) > 0:
+                # Gene set library filter
+                if "gene_set_library" in pe_filtered.columns:
+                    libraries = ["All"] + sorted(pe_filtered["gene_set_library"].unique().tolist())
+                    selected_lib = st.selectbox(
+                        "Gene Set Library:",
+                        options=libraries,
+                        key="pe_lib_select",
+                    )
+                    if selected_lib != "All":
+                        pe_filtered = pe_filtered[pe_filtered["gene_set_library"] == selected_lib]
+
+                fig = plot_pathway_enrichment_bars(pe_filtered, pe_pert)
+                st.plotly_chart(fig, use_container_width=True)
+
+                with st.expander("Full Results Table"):
+                    st.dataframe(pe_filtered, use_container_width=True)
+
+                st.download_button(
+                    "Download Enrichment Results",
+                    data=pe_filtered.to_csv(index=False),
+                    file_name=f"{pe_pert}_{pe_cond}_enrichment.csv",
+                    mime="text/csv",
+                )
+            else:
+                st.info(f"No pathway enrichment data for {pe_pert} in {pe_cond}")
+        else:
+            st.info(f"No pathway enrichment data available for {pe_cond}")
+    else:
+        st.warning(f"No perturbations found for {gene}")
 
 
 # ============ MARKER EXPRESSION TAB ============
@@ -426,7 +643,6 @@ with tab_markers:
     in marker gene expression.
     """)
 
-    # Get perturbation IDs for this gene
     try:
         pert_info = get_perturbations_for_gene(gene)
         perturbations_marker = pert_info["perturbations"]
@@ -437,9 +653,11 @@ with tab_markers:
         # Check which perturbations have marker TPM plots available
         available_marker_perts = []
         for p in perturbations_marker:
-            marker_path = get_marker_tpm_path(p, "EBs")
-            if marker_path.exists():
-                available_marker_perts.append(p)
+            for cond in ["EBs", "iPSC"]:
+                marker_path = get_marker_tpm_path(p, cond)
+                if marker_path.exists():
+                    available_marker_perts.append(p)
+                    break
 
         if available_marker_perts:
             marker_pert = st.selectbox(
@@ -448,10 +666,10 @@ with tab_markers:
                 key="marker_tpm_pert_select",
             )
 
-            # Display the marker TPM plot (EBs only for now)
-            st.markdown("**EBs - Marker Expression (TPM)**")
+            # EBs
             marker_path_ebs = get_marker_tpm_path(marker_pert, "EBs")
             if marker_path_ebs.exists():
+                st.markdown("**EBs - Marker Expression (TPM)**")
                 st.image(str(marker_path_ebs), use_container_width=True)
 
                 st.caption("""
@@ -459,10 +677,8 @@ with tab_markers:
                 Blue = NTC control cells, Orange = perturbed cells.
                 Error bars show standard error. Markers are grouped by lineage.
                 """)
-            else:
-                st.info(f"No marker TPM plot available for {marker_pert}")
 
-            # Check for iPSC (if available in future)
+            # iPSC
             marker_path_ipsc = get_marker_tpm_path(marker_pert, "iPSC")
             if marker_path_ipsc.exists():
                 st.divider()
@@ -474,11 +690,9 @@ with tab_markers:
             st.subheader("Antibody Marker Validation")
             st.markdown("""
             These plots show expression of **antibody-detectable markers** that can be used for
-            flow cytometry validation. They help identify which markers best distinguish
-            perturbed cells from controls for experimental follow-up.
+            flow cytometry validation.
             """)
 
-            # Check which perturbations have antibody validation plots
             antibody_path_ebs = get_antibody_validation_path(marker_pert, "EBs")
             antibody_path_ipsc = get_antibody_validation_path(marker_pert, "iPSC")
 
@@ -505,14 +719,8 @@ with tab_markers:
                 st.info(f"No antibody validation plots available for {marker_pert}")
 
         else:
-            st.info(f"""
-            No marker expression plots available for **{gene}** perturbations.
+            st.info(f"No marker expression plots available for **{gene}** perturbations.")
 
-            Marker validation plots are currently available for a subset of interesting genes
-            with strong lineage effects. More will be added in future updates.
-            """)
-
-            # Show which genes have marker plots
             with st.expander("Genes with marker expression data"):
                 st.markdown("""
                 Marker TPM plots are available for perturbations of these genes:
@@ -623,25 +831,4 @@ with tab_cellxgene:
 
 
 # Sidebar
-with st.sidebar:
-    st.markdown("### 🧬 MORPHIC Portal")
-    st.caption("TF Perturbation Screen Explorer")
-
-    st.divider()
-
-    st.markdown("**Pages**")
-    st.page_link("app.py", label="Home", icon="🏠")
-    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="🔍")
-    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="🧬")
-
-    st.divider()
-
-    st.markdown(f"**Current Gene: {gene}**")
-    st.caption("Use tabs to explore perturbation data")
-
-    st.divider()
-
-    st.markdown(f"**Resources for {gene}**")
-    st.link_button(f"GeneCards: {gene}", get_genecards_url(gene), use_container_width=True)
-    st.link_button(f"DepMap: {gene}", get_depmap_url(gene), use_container_width=True)
-    st.link_button(f"NCBI Gene: {gene}", get_ncbi_gene_url(gene), use_container_width=True)
+render_sidebar(current_gene=gene)
