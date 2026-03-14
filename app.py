@@ -61,7 +61,7 @@ except Exception as e:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Two column layout for description and quick search
-left_col, right_col = st.columns([1.5, 1])
+left_col, right_col = st.columns([3, 2])
 
 with left_col:
     st.markdown('<p class="section-header">About</p>', unsafe_allow_html=True)
@@ -77,20 +77,23 @@ with left_col:
     st.markdown('<p class="section-header">Available Data</p>', unsafe_allow_html=True)
 
     data_types = [
-        ("Lineage Analysis", "Distributional effects on 6 developmental lineages"),
+        ("Lineage Analysis", "Effects on 6 developmental lineages"),
         ("Knockdown Efficiency", "Target gene knockdown validation"),
-        ("Viability Scores", "LFC-based cell fitness measurements"),
-        ("Differential Expression", "Per-perturbation DEG analysis (EBs & iPSC)"),
-        ("Timecourse Expression", "Gene expression across differentiation"),
-        ("Dose Response", "Knockdown efficiency vs lineage effect relationship"),
-        ("Lineage-Specific DE", "DE within individual lineages (perturbed vs NTC)"),
-        ("Pathway Enrichment", "Gene set enrichment of perturbation DEGs"),
-        ("TF Similarity", "Clustering of TFs by shared transcriptomic signatures"),
-        ("Transcriptome E-distance", "Global transcriptome shift per perturbation"),
+        ("Viability", "Cell fitness measurements"),
+        ("Differential Expression", "DEG analysis (EBs & iPSC)"),
+        ("Timecourse", "Expression across differentiation"),
+        ("Dose Response", "Knockdown vs lineage effect"),
+        ("Lineage DE", "Within-lineage DE (perturbed vs NTC)"),
+        ("Pathway Enrichment", "Gene set enrichment of DEGs"),
+        ("TF Similarity", "TF clustering by transcriptomic signatures"),
+        ("Transcriptome E-distance", "Global transcriptome shift"),
     ]
 
-    for title, desc in data_types:
-        st.markdown(f"**{title}** \u2014 {desc}")
+    # Two-column data type list
+    dt_left, dt_right = st.columns(2)
+    for i, (title, desc) in enumerate(data_types):
+        with dt_left if i % 2 == 0 else dt_right:
+            st.markdown(f"**{title}** \u2014 {desc}")
 
 with right_col:
     st.markdown('<p class="section-header">Quick Gene Search</p>', unsafe_allow_html=True)

@@ -129,14 +129,15 @@ footer {visibility: hidden;}
     font-size: 1.25rem !important;
 }
 
-/* Constrain image widths in single-column contexts */
-[data-testid="stImage"] {
-    max-width: 800px;
+/* Subheader spacing */
+[data-testid="stSubheader"] {
+    margin-top: 0.5rem !important;
+    padding-top: 0 !important;
 }
 
-/* Plotly chart max width */
-.stPlotlyChart {
-    max-width: 900px;
+/* Tighter dividers */
+hr {
+    margin: 1rem 0 !important;
 }
 
 /* Better expander styling */

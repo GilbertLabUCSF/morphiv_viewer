@@ -242,7 +242,9 @@ with tab_perturbation:
 
         spider_path_ebs = get_spider_plot_path(spider_pert, "EBs")
         if spider_path_ebs.exists():
-            st.image(str(spider_path_ebs), use_container_width=True)
+            _, center, _ = st.columns([1, 2, 1])
+            with center:
+                st.image(str(spider_path_ebs), use_container_width=True)
         else:
             st.info(f"No spider plot for {spider_pert} in EBs")
     else:
@@ -260,19 +262,21 @@ with tab_perturbation:
             key="marker_pert_select",
         )
 
-        st.markdown("**EBs**")
-        dotplot_path_ebs = get_marker_dotplot_path(marker_pert, "EBs")
-        if dotplot_path_ebs.exists():
-            st.image(str(dotplot_path_ebs), use_container_width=True)
-        else:
-            st.info(f"No marker dotplot for {marker_pert} in EBs")
+        _, dotplot_center, _ = st.columns([0.5, 3, 0.5])
+        with dotplot_center:
+            st.markdown("**EBs**")
+            dotplot_path_ebs = get_marker_dotplot_path(marker_pert, "EBs")
+            if dotplot_path_ebs.exists():
+                st.image(str(dotplot_path_ebs), use_container_width=True)
+            else:
+                st.info(f"No marker dotplot for {marker_pert} in EBs")
 
-        st.markdown("**iPSC**")
-        dotplot_path_ipsc = get_marker_dotplot_path(marker_pert, "iPSC")
-        if dotplot_path_ipsc.exists():
-            st.image(str(dotplot_path_ipsc), use_container_width=True)
-        else:
-            st.info(f"No marker dotplot for {marker_pert} in iPSC")
+            st.markdown("**iPSC**")
+            dotplot_path_ipsc = get_marker_dotplot_path(marker_pert, "iPSC")
+            if dotplot_path_ipsc.exists():
+                st.image(str(dotplot_path_ipsc), use_container_width=True)
+            else:
+                st.info(f"No marker dotplot for {marker_pert} in iPSC")
 
     st.divider()
 
@@ -283,7 +287,9 @@ with tab_perturbation:
         if len(gene_lineage) > 0:
             st.subheader("Lineage Effects")
             fig = plot_lineage_heatmap(gene_lineage, gene)
-            st.plotly_chart(fig, use_container_width=True)
+            _, hm_center, _ = st.columns([0.5, 3, 0.5])
+            with hm_center:
+                st.plotly_chart(fig, use_container_width=True)
 
             with st.expander("View detailed metrics"):
                 display_cols = [
@@ -310,7 +316,9 @@ with tab_perturbation:
 
         if len(gene_comp) > 0:
             fig = plot_compositional_bars(gene_comp, gene)
-            st.plotly_chart(fig, use_container_width=True)
+            _, comp_center, _ = st.columns([0.5, 3, 0.5])
+            with comp_center:
+                st.plotly_chart(fig, use_container_width=True)
         else:
             st.info(f"No significant compositional changes for {gene}")
 
@@ -455,7 +463,9 @@ with tab_perturbation:
 
             if deg_df is not None:
                 fig = plot_deg_volcano(deg_df, f"{selected_pert} ({deg_condition})")
-                st.plotly_chart(fig, use_container_width=True)
+                _, deg_center, _ = st.columns([0.5, 3, 0.5])
+                with deg_center:
+                    st.plotly_chart(fig, use_container_width=True)
 
                 st.download_button(
                     "Download DEG table",
@@ -526,7 +536,9 @@ with tab_lineage_de:
 
             if lde_df is not None:
                 fig = plot_lineage_de_volcano(lde_df, lde_pert, lde_lineage)
-                st.plotly_chart(fig, use_container_width=True)
+                _, lde_center, _ = st.columns([0.5, 3, 0.5])
+                with lde_center:
+                    st.plotly_chart(fig, use_container_width=True)
 
                 with st.expander("Top DEGs"):
                     padj_col = "padj" if "padj" in lde_df.columns else "pval"
@@ -601,7 +613,9 @@ with tab_pathway:
                         pe_filtered = pe_filtered[pe_filtered["gene_set_library"] == selected_lib]
 
                 fig = plot_pathway_enrichment_bars(pe_filtered, pe_pert)
-                st.plotly_chart(fig, use_container_width=True)
+                _, pe_center, _ = st.columns([0.5, 3, 0.5])
+                with pe_center:
+                    st.plotly_chart(fig, use_container_width=True)
 
                 with st.expander("Full Results Table"):
                     st.dataframe(pe_filtered, use_container_width=True)
@@ -658,7 +672,9 @@ with tab_markers:
             marker_path_ebs = get_marker_tpm_path(marker_pert, "EBs")
             if marker_path_ebs.exists():
                 st.markdown("**EBs - Marker Expression (TPM)**")
-                st.image(str(marker_path_ebs), use_container_width=True)
+                _, tpm_center, _ = st.columns([0.5, 3, 0.5])
+                with tpm_center:
+                    st.image(str(marker_path_ebs), use_container_width=True)
 
                 st.caption("""
                 **How to interpret:** Each bar shows the mean TPM expression of a marker gene.
@@ -671,7 +687,9 @@ with tab_markers:
             if marker_path_ipsc.exists():
                 st.divider()
                 st.markdown("**iPSC - Marker Expression (TPM)**")
-                st.image(str(marker_path_ipsc), use_container_width=True)
+                _, tpm_center2, _ = st.columns([0.5, 3, 0.5])
+                with tpm_center2:
+                    st.image(str(marker_path_ipsc), use_container_width=True)
 
             # Antibody validation section
             st.divider()
@@ -734,7 +752,9 @@ with tab_timecourse:
 
         if len(gene_tc) > 0:
             fig = plot_timecourse_expression(tc_df, gene)
-            st.plotly_chart(fig, use_container_width=True)
+            _, tc_center, _ = st.columns([0.5, 3, 0.5])
+            with tc_center:
+                st.plotly_chart(fig, use_container_width=True)
 
             with st.expander("View timecourse data"):
                 st.dataframe(gene_tc, use_container_width=True)
