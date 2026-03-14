@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MORPHIC TF Perturbation Screen</title>
+    <title>MORPHIC TF Perturbation Screen | Gilbert Lab, UCSF</title>
     <link rel="icon" href="/app/logo_transparent.ico">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -12,35 +12,35 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #0b0f1a;
+            background: #052049;
             color: #e2e8f0;
             min-height: 100vh;
             overflow-x: hidden;
         }
 
-        /* Animated background grid */
+        /* Subtle background grid */
         .bg-grid {
             position: fixed;
             inset: 0;
             background-image:
-                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+                linear-gradient(rgba(0, 189, 177, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 189, 177, 0.04) 1px, transparent 1px);
             background-size: 60px 60px;
             z-index: 0;
         }
 
-        /* Gradient orbs */
+        /* Gradient orbs — UCSF navy/teal palette */
         .orb {
             position: fixed;
             border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.15;
+            filter: blur(90px);
+            opacity: 0.12;
             z-index: 0;
             animation: float 20s ease-in-out infinite;
         }
-        .orb-1 { width: 600px; height: 600px; background: #6366f1; top: -200px; right: -100px; }
-        .orb-2 { width: 400px; height: 400px; background: #8b5cf6; bottom: -100px; left: -100px; animation-delay: -10s; }
-        .orb-3 { width: 300px; height: 300px; background: #3b82f6; top: 40%; left: 60%; animation-delay: -5s; }
+        .orb-1 { width: 600px; height: 600px; background: #00BDB1; top: -200px; right: -100px; }
+        .orb-2 { width: 400px; height: 400px; background: #F26D04; bottom: -100px; left: -100px; animation-delay: -10s; }
+        .orb-3 { width: 300px; height: 300px; background: #00BDB1; top: 40%; left: 60%; animation-delay: -5s; }
 
         @keyframes float {
             0%, 100% { transform: translate(0, 0); }
@@ -52,7 +52,7 @@
         .container {
             position: relative;
             z-index: 1;
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
             padding: 0 2rem;
             min-height: 100vh;
@@ -68,55 +68,105 @@
             left: 0;
             right: 0;
             z-index: 10;
-            padding: 1.25rem 2rem;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             backdrop-filter: blur(12px);
-            background: rgba(11, 15, 26, 0.7);
-            border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+            background: rgba(5, 32, 73, 0.85);
+            border-bottom: 1px solid rgba(0, 189, 177, 0.1);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
         }
 
         .topbar-brand {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #94a3b8;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
         }
+
+        .topbar-logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.01em;
+        }
+
+        .topbar-logo span {
+            color: #00BDB1;
+        }
+
+        .topbar-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .topbar-lab {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.02em;
+        }
+
+        .topbar-lab a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .topbar-lab a:hover { color: #00BDB1; }
 
         .topbar-link {
             font-size: 0.85rem;
-            color: #818cf8;
+            color: #00BDB1;
             text-decoration: none;
             font-weight: 500;
             padding: 0.5rem 1.25rem;
-            border: 1px solid rgba(129, 140, 248, 0.3);
+            border: 1px solid rgba(0, 189, 177, 0.3);
             border-radius: 8px;
             transition: all 0.2s;
         }
         .topbar-link:hover {
-            background: rgba(129, 140, 248, 0.1);
-            border-color: rgba(129, 140, 248, 0.5);
+            background: rgba(0, 189, 177, 0.1);
+            border-color: rgba(0, 189, 177, 0.5);
         }
 
         /* Hero */
         .hero {
-            padding: 8rem 0 4rem;
+            padding: 8rem 0 3rem;
+        }
+
+        .badge-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
         }
 
         .badge {
             display: inline-block;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #818cf8;
-            background: rgba(129, 140, 248, 0.1);
-            border: 1px solid rgba(129, 140, 248, 0.2);
-            padding: 0.4rem 1rem;
+            padding: 0.35rem 0.85rem;
             border-radius: 100px;
-            margin-bottom: 2rem;
+        }
+
+        .badge-nih {
+            color: #00BDB1;
+            background: rgba(0, 189, 177, 0.1);
+            border: 1px solid rgba(0, 189, 177, 0.2);
+        }
+
+        .badge-ucsf {
+            color: #F2A900;
+            background: rgba(242, 169, 0, 0.1);
+            border: 1px solid rgba(242, 169, 0, 0.2);
         }
 
         h1 {
@@ -128,17 +178,22 @@
         }
 
         h1 .gradient {
-            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #818cf8 100%);
+            background: linear-gradient(135deg, #00BDB1 0%, #4FD1C5 40%, #F2A900 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
+        h1 .light {
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 600;
+        }
+
         .subtitle {
             font-size: 1.15rem;
-            color: #94a3b8;
+            color: rgba(255, 255, 255, 0.55);
             line-height: 1.7;
-            max-width: 600px;
+            max-width: 620px;
             margin-bottom: 3rem;
         }
 
@@ -157,19 +212,19 @@
             font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
             font-weight: 600;
-            color: #fff;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #052049;
+            background: linear-gradient(135deg, #00BDB1, #4FD1C5);
             border: none;
             padding: 0.85rem 2rem;
             border-radius: 10px;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 189, 177, 0.25);
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 8px 30px rgba(0, 189, 177, 0.35);
         }
 
         .btn-secondary {
@@ -179,18 +234,18 @@
             font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
             font-weight: 500;
-            color: #94a3b8;
+            color: rgba(255, 255, 255, 0.6);
             background: transparent;
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 0.85rem 2rem;
             border-radius: 10px;
             text-decoration: none;
             transition: all 0.2s;
         }
         .btn-secondary:hover {
-            color: #e2e8f0;
-            border-color: rgba(148, 163, 184, 0.4);
-            background: rgba(148, 163, 184, 0.05);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         /* Stats bar */
@@ -198,14 +253,14 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 1px;
-            background: rgba(148, 163, 184, 0.08);
+            background: rgba(0, 189, 177, 0.08);
             border-radius: 16px;
             overflow: hidden;
-            margin: 4rem 0;
+            margin: 3.5rem 0;
         }
 
         .stat {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(5, 32, 73, 0.9);
             padding: 1.5rem;
             text-align: center;
         }
@@ -213,13 +268,13 @@
         .stat-value {
             font-size: 1.75rem;
             font-weight: 700;
-            color: #f1f5f9;
+            color: #fff;
             letter-spacing: -0.02em;
         }
 
         .stat-label {
             font-size: 0.75rem;
-            color: #64748b;
+            color: rgba(255, 255, 255, 0.4);
             text-transform: uppercase;
             letter-spacing: 0.08em;
             margin-top: 0.25rem;
@@ -235,57 +290,109 @@
 
         .feature {
             padding: 1.5rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(148, 163, 184, 0.06);
+            background: rgba(5, 32, 73, 0.7);
+            border: 1px solid rgba(0, 189, 177, 0.06);
             border-radius: 12px;
             transition: all 0.2s;
         }
         .feature:hover {
-            border-color: rgba(129, 140, 248, 0.15);
-            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(0, 189, 177, 0.2);
+            background: rgba(5, 32, 73, 0.9);
         }
 
         .feature-icon {
-            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 189, 177, 0.1);
+            border-radius: 10px;
             margin-bottom: 0.75rem;
+            font-size: 1.25rem;
         }
 
         .feature h3 {
             font-size: 0.95rem;
             font-weight: 600;
-            color: #e2e8f0;
+            color: #fff;
             margin-bottom: 0.4rem;
         }
 
         .feature p {
             font-size: 0.85rem;
-            color: #64748b;
+            color: rgba(255, 255, 255, 0.4);
             line-height: 1.5;
         }
 
         /* Footer */
         .footer {
             padding: 3rem 0;
-            text-align: center;
-            border-top: 1px solid rgba(148, 163, 184, 0.06);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        .footer p {
-            font-size: 0.8rem;
-            color: #475569;
-            line-height: 1.8;
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
         }
 
-        .footer a {
-            color: #64748b;
+        .footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .footer-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .footer-orgs {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .footer-org {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .footer-org:hover { color: #00BDB1; }
+
+        .footer-org-sep {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .footer-right {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .footer-right a {
+            color: rgba(255, 255, 255, 0.35);
             text-decoration: none;
         }
-        .footer a:hover { color: #818cf8; }
+        .footer-right a:hover { color: #00BDB1; }
 
         @media (max-width: 640px) {
             .container { padding: 0 1.25rem; }
             .hero { padding: 6rem 0 2rem; }
             .stats { grid-template-columns: repeat(2, 1fr); }
+            .topbar-lab { display: none; }
+            .topbar-divider { display: none; }
+            .footer-content { flex-direction: column; text-align: center; }
+            .footer-orgs { justify-content: center; }
         }
     </style>
 </head>
@@ -296,16 +403,27 @@
     <div class="orb orb-3"></div>
 
     <nav class="topbar">
-        <span class="topbar-brand">MorPhiC Consortium</span>
+        <div class="topbar-left">
+            <a href="/" class="topbar-brand">
+                <span class="topbar-logo"><span>UCSF</span> Gilbert Lab</span>
+            </a>
+            <div class="topbar-divider"></div>
+            <span class="topbar-lab">
+                <a href="https://arcinstitute.org/" target="_blank" rel="noopener">Arc Institute</a>
+            </span>
+        </div>
         <a href="/app/" class="topbar-link">Sign In</a>
     </nav>
 
     <div class="container">
         <div class="hero">
-            <div class="badge">NIH Common Fund</div>
+            <div class="badge-row">
+                <div class="badge badge-nih">NIH Common Fund</div>
+                <div class="badge badge-ucsf">MorPhiC Consortium</div>
+            </div>
             <h1>
                 <span class="gradient">TF Perturbation Screen</span><br>
-                Data Portal
+                <span class="light">Data Portal</span>
             </h1>
             <p class="subtitle">
                 A systematic CRISPRi atlas of transcription factor function in human
@@ -366,12 +484,21 @@
         </div>
 
         <footer class="footer">
-            <p>
-                <strong>MorPhiC Consortium</strong> &mdash; Molecular Phenotypes of Null Alleles in Cells<br>
-                <a href="https://gilbertlab.ucsf.edu/" target="_blank" rel="noopener">Gilbert Lab</a> &middot;
-                <a href="https://www.ucsf.edu/" target="_blank" rel="noopener">UCSF</a> &middot;
-                <a href="https://arcinstitute.org/" target="_blank" rel="noopener">Arc Institute</a>
-            </p>
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="footer-label">A project of</span>
+                    <div class="footer-orgs">
+                        <a href="https://gilbertlab.ucsf.edu/" target="_blank" rel="noopener" class="footer-org">Gilbert Lab</a>
+                        <div class="footer-org-sep"></div>
+                        <a href="https://www.ucsf.edu/" target="_blank" rel="noopener" class="footer-org">UCSF</a>
+                        <div class="footer-org-sep"></div>
+                        <a href="https://arcinstitute.org/" target="_blank" rel="noopener" class="footer-org">Arc Institute</a>
+                    </div>
+                </div>
+                <div class="footer-right">
+                    <a href="https://www.morphic.bio/" target="_blank" rel="noopener">MorPhiC Consortium</a> &mdash; Molecular Phenotypes of Null Alleles in Cells
+                </div>
+            </div>
         </footer>
     </div>
 </body>
