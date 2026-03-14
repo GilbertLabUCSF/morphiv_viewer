@@ -213,9 +213,9 @@ def plot_deg_volcano(df: pd.DataFrame, perturbation: str, padj_threshold: float 
     df.loc[(df["padj"] < padj_threshold) & (df["log2FoldChange"] < -lfc_threshold), "category"] = "Down"
 
     color_map = {
-        "Not significant": "#cccccc",
+        "Not significant": "#b0aba5",
         "Up": "#e74c3c",
-        "Down": "#3498db",
+        "Down": "#4a8eb5",
     }
 
     fig = px.scatter(
@@ -309,7 +309,7 @@ def plot_timecourse_expression(df: pd.DataFrame, gene: str) -> go.Figure:
             y=gene_df["mean_expression"],
             mode="lines+markers",
             name="Expression",
-            line=dict(color="#3498db"),
+            line=dict(color="#5a9e8f"),
         ),
         row=1, col=1
     )
@@ -441,7 +441,7 @@ def plot_marker_barplot(df: pd.DataFrame, perturbation: str) -> go.Figure:
 
     # Define marker gene groups with colors
     marker_groups = {
-        "Pluripotency": {"genes": ["POU5F1", "NANOG", "SOX2", "DNMT3B", "DPPA3"], "color": "#3498db"},
+        "Pluripotency": {"genes": ["POU5F1", "NANOG", "SOX2", "DNMT3B", "DPPA3"], "color": "#5a9e8f"},
         "Ectoderm": {"genes": ["PAX6", "SOX1", "NES", "OTX2", "TFAP2A"], "color": "#9b59b6"},
         "Endoderm": {"genes": ["SOX17", "FOXA2", "GATA4", "HNF4A", "CXCR4"], "color": "#f1c40f"},
         "Mesoderm": {"genes": ["T", "MIXL1", "MESP1", "TBX6", "HAND1"], "color": "#e74c3c"},
@@ -856,7 +856,7 @@ def plot_pathway_enrichment_bars(df: pd.DataFrame, perturbation: str, n_top: int
         x=top["neg_log_p"],
         y=top["term_short"],
         orientation="h",
-        marker_color="#3498db",
+        marker_color="#c8a57b",
         hovertemplate="<b>%{y}</b><br>-log10(p): %{x:.2f}<extra></extra>",
     ))
 
@@ -908,9 +908,9 @@ def plot_lineage_de_volcano(
     df.loc[(df[padj_col] < padj_threshold) & (df[lfc_col] < -lfc_threshold), "category"] = "Down"
 
     color_map = {
-        "Not significant": "#cccccc",
+        "Not significant": "#b0aba5",
         "Up": "#e74c3c",
-        "Down": "#3498db",
+        "Down": "#4a8eb5",
     }
 
     fig = px.scatter(

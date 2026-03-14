@@ -133,7 +133,7 @@ with right_col:
 # Footer
 st.markdown("---")
 st.markdown(
-    '<p style="text-align: center; color: #64748b; font-size: 0.85rem;">'
+    '<p style="text-align: center; color: #5c5856; font-size: 0.85rem;">'
     'MorPhiC Consortium \u2014 Molecular Phenotypes of Null Alleles in Cells'
     '</p>',
     unsafe_allow_html=True

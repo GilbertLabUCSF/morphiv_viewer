@@ -66,7 +66,7 @@ LINEAGES = [
 # Color schemes
 LINEAGE_COLORS = {
     "Amnion": "#e74c3c",
-    "Epiblast": "#3498db",
+    "Epiblast": "#5a8fa3",
     "Formative_Epiblast": "#9b59b6",
     "Neural_Ectoderm": "#2ecc71",
     "Non_neural_Ectoderm": "#f39c12",
@@ -74,7 +74,7 @@ LINEAGE_COLORS = {
 }
 
 CONDITION_COLORS = {
-    "iPSC": "#3498db",
+    "iPSC": "#5a9e8f",
     "EBs": "#e74c3c",
 }
 
