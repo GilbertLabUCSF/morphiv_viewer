@@ -230,7 +230,7 @@ with tab_perturbation:
 
     st.divider()
 
-    # Spider Plot section
+    # Spider Plot section (EBs only — iPSC spider plots not available)
     st.subheader("Lineage Effects (Spider Plot)")
 
     if perturbations:
@@ -240,23 +240,11 @@ with tab_perturbation:
             key="spider_pert_select",
         )
 
-        spider_col1, spider_col2 = st.columns(2)
-
-        with spider_col1:
-            st.markdown("**EBs**")
-            spider_path_ebs = get_spider_plot_path(spider_pert, "EBs")
-            if spider_path_ebs.exists():
-                st.image(str(spider_path_ebs), use_container_width=True)
-            else:
-                st.info(f"No spider plot for {spider_pert} in EBs")
-
-        with spider_col2:
-            st.markdown("**iPSC**")
-            spider_path_ipsc = get_spider_plot_path(spider_pert, "iPSC")
-            if spider_path_ipsc.exists():
-                st.image(str(spider_path_ipsc), use_container_width=True)
-            else:
-                st.info(f"No spider plot for {spider_pert} in iPSC")
+        spider_path_ebs = get_spider_plot_path(spider_pert, "EBs")
+        if spider_path_ebs.exists():
+            st.image(str(spider_path_ebs), use_container_width=True)
+        else:
+            st.info(f"No spider plot for {spider_pert} in EBs")
     else:
         st.warning(f"No perturbations found for {gene}")
 

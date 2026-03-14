@@ -144,17 +144,31 @@ for COND in EBs iPSC; do
     fi
 done
 
-# Upload CellxGene h5ad files (26GB EBs + 15GB iPSC)
-echo "[11/12] Uploading CellxGene h5ad files (~41 GB)..."
+# Upload CellxGene h5ad files — scored versions with date suffix
+DATE_SUFFIX=$(date +%Y%m%d)
+echo "[11/12] Uploading CellxGene h5ad files (~49 GB, suffix: $DATE_SUFFIX)..."
+
+# EBs and iPSC scored h5ad
 for COND in EBs iPSC; do
     H5AD_FILE="$SOURCE_DATA/results/$COND/cell_type_scored_scvi_compact.h5ad"
+    REMOTE_NAME="${COND}_scored_${DATE_SUFFIX}.h5ad"
     if [ -f "$H5AD_FILE" ]; then
-        echo "  Uploading ${COND} h5ad ($(du -h "$H5AD_FILE" | cut -f1))..."
+        echo "  Uploading $REMOTE_NAME ($(du -h "$H5AD_FILE" | cut -f1))..."
         $GCLOUD compute scp --zone "$GCP_ZONE" --project "$GCP_PROJECT" \
           "$H5AD_FILE" \
-          "$GCP_INSTANCE:/opt/morphic/cellxgene/${COND}_cell_type_scored_scvi_compact.h5ad"
+          "$GCP_INSTANCE:/opt/morphic/cellxgene/$REMOTE_NAME"
     fi
 done
+
+# Timecourse scored h5ad
+TC_H5AD="/large_storage/gilbertlab/ashir/morphic_pub_refactor/marker_refinement/timecourse_scored.h5ad"
+TC_REMOTE_NAME="timecourse_scored_${DATE_SUFFIX}.h5ad"
+if [ -f "$TC_H5AD" ]; then
+    echo "  Uploading $TC_REMOTE_NAME ($(du -h "$TC_H5AD" | cut -f1))..."
+    $GCLOUD compute scp --zone "$GCP_ZONE" --project "$GCP_PROJECT" \
+      "$TC_H5AD" \
+      "$GCP_INSTANCE:/opt/morphic/cellxgene/$TC_REMOTE_NAME"
+fi
 
 # Configure CellxGene Gateway to serve new files
 echo "[12/12] Configuring CellxGene..."
@@ -173,6 +187,7 @@ echo ""
 echo "=== Upload Complete ==="
 echo "All data uploaded to $GCP_INSTANCE"
 echo ""
-echo "Don't forget to update .streamlit/secrets.toml with the new CellxGene URLs:"
-echo '  ipsc_url = "https://cellxgene.perturb.dev/view/iPSC_cell_type_scored_scvi_compact.h5ad/"'
-echo '  ebs_url = "https://cellxgene.perturb.dev/view/EBs_cell_type_scored_scvi_compact.h5ad/"'
+echo "CellxGene h5ad files uploaded as:"
+echo "  EBs_scored_${DATE_SUFFIX}.h5ad"
+echo "  iPSC_scored_${DATE_SUFFIX}.h5ad"
+echo "  timecourse_scored_${DATE_SUFFIX}.h5ad"
