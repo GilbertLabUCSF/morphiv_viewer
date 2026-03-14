@@ -169,32 +169,32 @@ def get_viability_interpretation(lfc: float) -> str:
 
 
 def format_screen_data_context(gene: str, data: dict) -> str:
-    """Format screen data as context for the AI prompt."""
+    """Format comprehensive screen data as context for the AI prompt."""
     lines = [f"=== MORPHIC CRISPRi Screen Data for {gene} ===\n"]
 
     if data["knockdown"]:
-        lines.append("Knockdown Efficiency:")
+        lines.append("**Knockdown Efficiency:**")
         for cond, kd in data["knockdown"].items():
             cells = data["n_cells"].get(cond, "?")
-            lines.append(f"- {cond}: {kd['pct']}% ({kd.get('category', '')}) - {cells} cells")
+            lines.append(f"- {cond}: {kd['pct']}% knockdown ({kd.get('category', '')}) - {cells} cells")
         lines.append("")
 
     if data["viability"]:
-        lines.append("Viability/Fitness:")
+        lines.append("**Viability/Fitness:**")
         for cond, via in data["viability"].items():
             lines.append(f"- {cond}: LFC = {via['lfc']} ({via['interpretation']})")
         lines.append("")
 
     if data["top_affected_lineages"]:
-        lines.append("Top Lineage Effects (Glass's Delta):")
+        lines.append("**Top Lineage Effects (Glass's Delta):**")
         for effect in data["top_affected_lineages"]:
             direction = "\u2191" if effect["delta"] > 0 else "\u2193"
-            lines.append(f"- {effect['lineage']} ({effect['condition']}): {direction} \u0394={effect['delta']}")
+            lines.append(f"- {effect['lineage']} ({effect['condition']}): {direction} \u0394={effect['delta']} ({effect['direction']})")
         lines.append("")
 
     for cond in ["EBs", "iPSC"]:
         if data["lineage_effects"].get(cond):
-            lines.append(f"All Lineage Effects in {cond}:")
+            lines.append(f"**All Lineage Effects in {cond}:**")
             sorted_effects = sorted(data["lineage_effects"][cond].items(), key=lambda x: abs(x[1]), reverse=True)
             for lineage, delta in sorted_effects:
                 direction = "enriched" if delta > 0 else "depleted"
@@ -202,13 +202,23 @@ def format_screen_data_context(gene: str, data: dict) -> str:
             lines.append("")
 
     if data["deg_summary"]:
-        lines.append(f"DEGs (padj<0.05, |LFC|>0.5): {data['deg_summary']['total']} total, {data['deg_summary']['up']} up, {data['deg_summary']['down']} down")
+        lines.append("**Differential Expression (padj < 0.05, |LFC| > 0.5):**")
+        lines.append(f"- Total significant DEGs: {data['deg_summary']['total']}")
+        lines.append(f"- Upregulated: {data['deg_summary']['up']}")
+        lines.append(f"- Downregulated: {data['deg_summary']['down']}")
         lines.append("")
 
     if data["top_degs_up"]:
-        lines.append("Top Upregulated: " + ", ".join(f"{d['gene']}(+{d['lfc']})" for d in data["top_degs_up"]))
+        lines.append("**Top Upregulated Genes:**")
+        for deg in data["top_degs_up"]:
+            lines.append(f"- {deg['gene']}: LFC = +{deg['lfc']}")
+        lines.append("")
+
     if data["top_degs_down"]:
-        lines.append("Top Downregulated: " + ", ".join(f"{d['gene']}({d['lfc']})" for d in data["top_degs_down"]))
+        lines.append("**Top Downregulated Genes:**")
+        for deg in data["top_degs_down"]:
+            lines.append(f"- {deg['gene']}: LFC = {deg['lfc']}")
+        lines.append("")
 
     if len(lines) <= 2:
         return ""
@@ -216,35 +226,66 @@ def format_screen_data_context(gene: str, data: dict) -> str:
     return "\n".join(lines)
 
 
-GENE_SUMMARY_PROMPT = """You are a developmental biology expert writing concise gene summaries for the MORPHIC TF Perturbation Screen Portal.
+GENE_SUMMARY_PROMPT = """You are a scientific expert generating detailed gene summaries for the MORPHIC TF Perturbation Screen Portal.
 
-## Screen Context
-CRISPRi screen of transcription factors in human iPSCs and embryoid bodies (EBs). Readouts:
-- Lineage composition (Glass's Delta): positive = enriched after KD, negative = depleted. |Δ|>0.8 strong, >0.5 moderate, >0.3 small.
-- Viability (LFC): negative = fitness cost.
-- Transcriptome (DEGs): differentially expressed genes vs NTC.
+## About This Screen
+This is a CRISPRi screen of transcription factors in human iPSCs and embryoid bodies (EBs), measuring:
+- **Lineage composition changes** using Glass's Delta (effect size comparing perturbed vs NTC cells)
+- **Viability/fitness** using guide-level log fold changes
+- **Transcriptome changes** via differential expression analysis
 
-Lineages: Amnion, Epiblast, Formative Epiblast, Neural Ectoderm, Non-neural Ectoderm, Trophoblast-Like.
+The lineages tracked are: Amnion, Epiblast, Formative Epiblast, Neural Ectoderm, Non-neural Ectoderm, Trophoblast-Like.
 
-## Output Format (4 sections, 300-400 words total)
+**Effect interpretation:**
+- Positive Glass's Delta = lineage ENRICHED after knockdown (more cells in that lineage)
+- Negative Glass's Delta = lineage DEPLETED after knockdown (fewer cells in that lineage)
+- |Δ| > 0.8 is a strong effect, |Δ| > 0.5 is moderate, |Δ| > 0.3 is small
 
-### What {gene} Does
-One paragraph: protein type, known developmental roles, key pathways. Be direct.
+## Generate a Summary With These Sections:
 
-### Screen Results
-Interpret the data provided. Reference specific numbers. Compare iPSC vs EBs if both available. Bold the most striking finding.
+### Gene Overview
+Brief description of {gene}: what type of protein, known functions, expression patterns in development.
+
+### Known Role in Pluripotency & Differentiation
+What is established in the literature about this gene's role in:
+- Pluripotency maintenance or exit
+- Lineage specification (ectoderm, mesoderm, endoderm, trophoblast)
+- Chromatin regulation (if applicable)
+- Key interacting partners or pathways
+
+### Screen Results Interpretation
+Interpret the MORPHIC screen data I provide:
+- What do the lineage effects suggest about this gene's function?
+- Are the effects consistent with known biology, or surprising?
+- What does the DEG pattern (if available) suggest about mechanism?
+- Compare iPSC vs EBs effects if both are available.
+- **Bold the most striking finding.**
 
 ### Mechanistic Hypothesis
-2-3 sentences: what is this gene doing during differentiation based on the data? What pathways or targets might explain the lineage shifts?
+Based on known biology AND the screen results, propose a mechanistic hypothesis:
+- What is this gene doing during differentiation?
+- Why might knockdown cause the observed lineage changes?
+- What downstream targets or pathways might be involved?
 
-### Key Takeaways
-3-5 bullet points: what confirms known biology, what is novel/unexpected, what deserves follow-up.
+### Novel Insights from This Screen
+Highlight what this screen reveals that is:
+- Confirming known biology
+- Potentially novel or unexpected
+- Worthy of follow-up validation
 
-## Rules
-- Be specific and quantitative — cite the actual Delta values and DEG counts.
-- No hedging or filler. State findings directly.
-- Do not include resource links (they are shown separately).
-- Do not cite specific papers.
+### Resources
+- [GeneCards](https://www.genecards.org/cgi-bin/carddisp.pl?gene={gene})
+- [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/?term={gene})
+- [Human Protein Atlas](https://www.proteinatlas.org/search/{gene})
+
+## Important Guidelines:
+- Use bullet points for readability
+- Be specific about the screen data — refer to actual numbers (Delta values, DEG counts)
+- Connect observations to known biology
+- If data suggests something novel, say so explicitly
+- Don't cite specific papers, but reference established knowledge
+- No hedging or filler — state findings directly
+- Aim for ~500-700 words total
 """
 
 
@@ -274,7 +315,7 @@ def generate_gene_summary(gene_name: str, screen_context: str = "", model: str =
             model=model,
             messages=messages,
             temperature=0.3,
-            max_tokens=1500,
+            max_tokens=2500,
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -284,7 +325,7 @@ def generate_gene_summary(gene_name: str, screen_context: str = "", model: str =
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.3,
-                max_tokens=1500,
+                max_tokens=2500,
             )
             return response.choices[0].message.content
         except Exception as e2:
@@ -330,7 +371,8 @@ def render_gene_summary_section(gene: str):
         summary = generate_gene_summary(gene, screen_context)
 
     if summary:
-        st.markdown(summary)
-        st.caption("AI-generated | Cached 24h | Based on screen data + literature")
+        with st.expander(f"AI-Generated Summary for {gene}", expanded=True):
+            st.markdown(summary)
+            st.caption("Generated by GPT-4.1-mini | Cached for 24 hours | Based on MORPHIC screen data + literature")
     else:
         st.error("Failed to generate summary")
