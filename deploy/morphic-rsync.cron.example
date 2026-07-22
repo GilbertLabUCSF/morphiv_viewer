@@ -1,0 +1,4 @@
+# Run on the workstation that mounts morphic_pub_refactor. flock inside the
+# script prevents overlapping transfers when a prior large sync is still active.
+# Adjust the checkout and log paths before installing with `crontab -e`.
+17 2 * * * cd /large_storage/gilbertlab/ashir/morphic_website && ./scripts/rsync_to_gcp.sh --full >> /large_storage/gilbertlab/ashir/tmp/morphic-production-rsync.log 2>&1

@@ -1,4 +1,4 @@
-# MORPHIC Portal GCP Deployment
+# MORPHIC EBs Browser GCP Deployment
 
 Deploy the MORPHIC TF Perturbation Screen Portal to GCP Compute Engine.
 
@@ -11,14 +11,30 @@ Deploy the MORPHIC TF Perturbation Screen Portal to GCP Compute Engine.
 
 ## Quick Start
 
-### 1. Upload Data (~240 MB)
+### 1. Upload the release
 
 From your local machine (where the data resides):
 
 ```bash
 cd /large_storage/gilbertlab/ashir/morphic_website
-bash scripts/upload_to_gcp.sh
+./scripts/upload_to_gcp.sh
 ```
+
+This is a resumable full rsync. It uploads the application, derived data, EBs
+tables, all paper figures, DEG and lineage-DE tables, and the stable EBs, iPSC,
+and timecourse CellxGene datasets. Incomplete H5AD files remain resumable in a
+dedicated remote staging directory outside the CellxGene browseable tree.
+
+For a quick code, derived-data, and core EBs-table deployment:
+
+```bash
+./scripts/sync_to_gcp.sh
+```
+
+Both commands validate the remote release and restart the browser. Current EBs
+result directories are exact mirrors; superseded remote files are moved into a
+timestamped `/opt/morphic/backups/` release backup. A local lock prevents
+scheduled and manual transfers from overlapping.
 
 ### 2. Setup Server
 
@@ -48,18 +64,7 @@ pip install -r requirements-lock.txt
 mkdir -p data_extracted
 ```
 
-### 3. Copy Secrets
-
-Copy your secrets.toml to the server (contains OpenAI API key):
-
-```bash
-# From local machine
-gcloud compute scp --zone "us-central1-c" --project "ashir-borah-project" \
-  .streamlit/secrets.toml \
-  "instance-20251119-174124:/opt/morphic/website/.streamlit/"
-```
-
-### 4. Test Manually
+### 3. Test Manually
 
 On the GCP server:
 
@@ -72,7 +77,7 @@ streamlit run app.py --server.port 8501 --server.headless true
 
 Visit http://34.46.167.158:8501 to test (if firewall allows).
 
-### 5. Setup Systemd Service
+### 4. Setup Systemd Service
 
 ```bash
 # Copy service file
@@ -87,7 +92,7 @@ sudo systemctl start morphic
 sudo systemctl status morphic
 ```
 
-### 6. Configure Nginx
+### 5. Configure Nginx
 
 Deploy the nginx configuration:
 
@@ -106,7 +111,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 7. Setup SSL with Certbot
+### 6. Setup SSL with Certbot
 
 ```bash
 # Install certbot if not present
@@ -122,7 +127,7 @@ sudo certbot --nginx -d perturb.dev -d www.perturb.dev -d cellxgene.perturb.dev
 # - Set up auto-renewal
 ```
 
-### 8. Configure cellxgene Gateway
+### 7. Configure cellxgene Gateway
 
 Find what port cellxgene gateway is running on:
 
@@ -130,12 +135,12 @@ Find what port cellxgene gateway is running on:
 # Check listening ports
 sudo ss -tlnp | grep -E '(python|cellxgene)'
 
-# If not on port 5005, update nginx config:
-sudo sed -i 's/127.0.0.1:5005/127.0.0.1:YOUR_PORT/' /etc/nginx/sites-available/perturb.dev
+# If not on port 5000, update nginx config:
+sudo sed -i 's/127.0.0.1:5000/127.0.0.1:YOUR_PORT/' /etc/nginx/sites-available/perturb.dev
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 9. DNS Configuration
+### 8. DNS Configuration
 
 Ensure these DNS records are set (in GoDaddy or your DNS provider):
 
@@ -145,7 +150,7 @@ Ensure these DNS records are set (in GoDaddy or your DNS provider):
 | A | www | 34.46.167.158 |
 | A | cellxgene | 34.46.167.158 |
 
-### 10. Test
+### 9. Test
 
 Visit:
 - https://perturb.dev/ (Morphic Portal)
@@ -161,11 +166,16 @@ git pull origin deployment
 sudo systemctl restart morphic
 ```
 
-Or use the sync script from local machine:
+Or deploy code and core EBs data from the local checkout:
 
 ```bash
-bash scripts/sync_to_gcp.sh
+./scripts/sync_to_gcp.sh
 ```
+
+Use `./scripts/upload_to_gcp.sh` when figures, large analysis tables, or
+CellxGene H5AD files have changed. To schedule a nightly full refresh, install
+the template in `deploy/morphic-rsync.cron.example` with `crontab -e` after
+checking its checkout and log paths.
 
 ## Logs
 
@@ -180,17 +190,19 @@ sudo tail -f /var/log/nginx/error.log
 
 ## Data Files
 
-Total: ~240 MB
+The quick sync includes the query-facing EBs tables below. The full sync also
+includes all manuscript figures, DEG and lineage-DE tables, and the three
+CellxGene datasets; it is intentionally multi-GB and safely resumable.
 
 | File | Size | Purpose |
 |------|------|---------|
-| lineage_analysis/*.csv | 19 MB | Main analysis data |
-| knockdown_efficiency/*.csv | 650 KB | Knockdown validation |
-| compositional/*.csv | 155 KB | Chi-square results |
-| viability/*.csv | 520 KB | Fitness scores |
-| resolved_targets.csv | 20 KB | Gene list |
-| figures/ | 204 MB | UMAP highlights, dotplots |
-| timecourse_expression.parquet | 2 MB | Timecourse data |
+| lineage_analysis/*.csv | ~19 MB | Glass's Δ and significance |
+| knn_probability_shifts/*.csv | ~3 MB | Interactive spider profiles |
+| knockdown_efficiency/*.csv | <1 MB | Knockdown validation |
+| compositional/*.csv | ~3 MB | Probability-shift hits |
+| viability/*.csv | <1 MB | Fitness scores |
+| timecourse_expression.parquet | ~3 MB | Timecourse summary |
+| pathway_enrichment_ebs.parquet | ~95 MB | Filterable pathway lookup |
 
 ## Architecture
 
