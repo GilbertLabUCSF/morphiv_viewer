@@ -129,11 +129,18 @@ def get_anchor_dotplot_path(condition: str, variant: str = "standardized", fmt: 
 
 
 def get_spider_plot_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated spider plot figure.
+    """Get the pipeline-generated manuscript spider plot.
 
-    Spider plots are now at figures/{condition}/lineage_analysis/spider/{perturbation}_knn_prob_shift.{fmt}
+    The radial values are NTC-centered log2 fold changes in mean KNN lineage
+    probability. Keep this asset as the authoritative browser rendering so the
+    portal and paper always use the same plotting implementation.
     """
     return FIGURES_ROOT / condition / "lineage_analysis" / "spider" / f"{perturbation}_knn_prob_shift.{fmt}"
+
+
+def get_deg_volcano_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
+    """Get the pipeline-generated per-perturbation DEG volcano plot."""
+    return FIGURES_ROOT / "volcano_plots" / condition / f"{perturbation}_volcano.{fmt}"
 
 
 def get_marker_tpm_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
@@ -162,8 +169,18 @@ def get_tf_similarity_path(condition: str, fmt: str = "png") -> Path:
 
 
 def get_edist_figure_path(condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated transcriptome E-distance overview figure."""
-    return FIGURES_ROOT / condition / "transcriptome_edist" / f"edist_overview.{fmt}"
+    """Get the pipeline-generated top-20 transcriptome E-distance figure."""
+    return FIGURES_ROOT / condition / "transcriptome_edist" / f"top20_edist_inverted.{fmt}"
+
+
+def get_edist_histogram_path(condition: str, fmt: str = "png") -> Path:
+    """Get the pipeline-generated transcriptome E-distance distribution."""
+    return FIGURES_ROOT / condition / "transcriptome_edist" / f"edist_histogram.{fmt}"
+
+
+def get_viability_figure_path(condition: str, fmt: str = "png") -> Path:
+    """Get the pipeline-generated viability volcano plot."""
+    return FIGURES_ROOT / "viability" / condition / f"{condition}_volcano_labeled.{fmt}"
 
 
 def get_trajectory_figure_path(perturbation: str, condition: str, fmt: str = "png") -> Path:

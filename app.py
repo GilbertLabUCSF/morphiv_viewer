@@ -1,143 +1,127 @@
-"""
-MORPHIC TF Perturbation Screen Portal - Home Page
-"""
+"""MORPHIC EBs TF perturbation browser home page."""
+
+from pathlib import Path
+import sys
+from urllib.parse import quote
 
 import streamlit as st
 
+
 st.set_page_config(
-    page_title="MORPHIC TF Screen Portal",
+    page_title="MORPHIC EBs Perturbation Browser",
     page_icon="logo_transparent.ico",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
-# Add src to path
-import sys
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.styles import inject_css
 from src.components import render_sidebar
-from src.data_loader import get_gene_list, get_summary_stats
+from src.data_loader import get_data_status, get_gene_list, get_summary_stats
+from src.styles import inject_css
+
 
 inject_css()
 
-# Title with custom styling
-st.markdown('<p class="main-title">MORPHIC TF Perturbation Screen</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Exploring transcription factor function in human pluripotent stem cells</p>', unsafe_allow_html=True)
-
-# Summary statistics
-try:
-    stats = get_summary_stats()
-
-    if "error" in stats:
-        st.error(f"Data loading error: {stats['error']}")
-    else:
-        # Dataset overview metrics
-        st.markdown('<p class="section-header">Dataset Overview</p>', unsafe_allow_html=True)
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        metrics = [
-            (col1, stats.get('n_genes', 0), "TFs Perturbed"),
-            (col2, stats.get('n_perturbations', 0), "Perturbations"),
-            (col3, stats.get('n_cells_ipsc', 0), "iPSC Cells"),
-            (col4, stats.get('n_cells_ebs', 0), "EBs Cells"),
-            (col5, stats.get('n_cells_timecourse', 0), "Timecourse Cells"),
-        ]
-
-        for col, value, label in metrics:
-            with col:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value">{value:,}</div>
-                    <div class="metric-label">{label}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"Error loading summary statistics: {e}")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# Two column layout for description and quick search
-left_col, right_col = st.columns([3, 2])
-
-with left_col:
-    st.markdown('<p class="section-header">About</p>', unsafe_allow_html=True)
-
-    st.markdown("""
-    The **MorPhiC Consortium** (Molecular Phenotypes of Null Alleles in Cells) is an NIH
-    initiative to catalogue molecular and cellular phenotypes from inactivating every human gene.
-
-    This portal provides access to the **TF Perturbation Screen**, with CRISPRi perturbations
-    of transcription factors in iPSCs and embryoid bodies (EBs).
-    """)
-
-    st.markdown('<p class="section-header">Available Data</p>', unsafe_allow_html=True)
-
-    data_types = [
-        ("Lineage Analysis", "Effects on 6 developmental lineages"),
-        ("Knockdown Efficiency", "Target gene knockdown validation"),
-        ("Viability", "Cell fitness measurements"),
-        ("Differential Expression", "DEG analysis (EBs & iPSC)"),
-        ("Timecourse", "Expression across differentiation"),
-        ("Dose Response", "Knockdown vs lineage effect"),
-        ("Lineage DE", "Within-lineage DE (perturbed vs NTC)"),
-        ("Pathway Enrichment", "Gene set enrichment of DEGs"),
-        ("TF Similarity", "TF clustering by transcriptomic signatures"),
-        ("Transcriptome E-distance", "Global transcriptome shift"),
-    ]
-
-    # Two-column data type list
-    dt_left, dt_right = st.columns(2)
-    for i, (title, desc) in enumerate(data_types):
-        with dt_left if i % 2 == 0 else dt_right:
-            st.markdown(f"**{title}** \u2014 {desc}")
-
-with right_col:
-    st.markdown('<p class="section-header">Quick Gene Search</p>', unsafe_allow_html=True)
-
-    try:
-        genes = get_gene_list()
-
-        if genes:
-            selected_gene = st.selectbox(
-                "Search for a gene:",
-                options=[""] + genes,
-                format_func=lambda x: "Type to search..." if x == "" else x,
-                key="home_gene_search",
-                label_visibility="collapsed",
-            )
-
-            if selected_gene:
-                st.session_state["selected_gene"] = selected_gene
-                st.success(f"**{selected_gene}** selected")
-                st.page_link("pages/2_Gene_Detail.py", label="View Gene Details \u2192", icon="\U0001f9ec")
-
-        else:
-            st.warning("No genes found. Check data sources.")
-
-    except Exception as e:
-        st.error(f"Error loading gene list: {e}")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<p class="section-header">Navigation</p>', unsafe_allow_html=True)
-
-    st.page_link("pages/1_Gene_Search.py", label="Gene Search", icon="\U0001f50d")
-    st.markdown("Filter and explore all perturbed TFs", help=None)
-
-    st.page_link("pages/2_Gene_Detail.py", label="Gene Detail", icon="\U0001f9ec")
-    st.markdown("Detailed view with perturbation effects")
-
-# Footer
-st.markdown("---")
+st.markdown('<p class="eyebrow">MORPHIC · EMBRYOID BODY SCREEN</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Explore transcription factor function during early differentiation</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<p style="text-align: center; color: #5c5856; font-size: 0.85rem;">'
-    'MorPhiC Consortium \u2014 Molecular Phenotypes of Null Alleles in Cells'
-    '</p>',
-    unsafe_allow_html=True
+    '<p class="subtitle">An EBs-first browser for connecting CRISPRi perturbations '
+    'to lineage phenotypes and baseline expression through differentiation.</p>',
+    unsafe_allow_html=True,
 )
 
-# Sidebar
+try:
+    stats = get_summary_stats()
+    if "error" in stats:
+        st.error("The primary EBs dataset is unavailable. Please contact the portal maintainers.")
+    else:
+        metrics = [
+            (stats.get("n_genes", 0), "TF genes"),
+            (stats.get("n_perturbations", 0), "EB perturbations"),
+            (stats.get("n_cells_ebs", 0), "Profiled EB cells"),
+            (stats.get("n_timepoints", 0), "Timepoints"),
+        ]
+        metric_markup = "".join(
+            f'<div class="metric-card"><div class="metric-value">{value:,}</div>'
+            f'<div class="metric-label">{label}</div></div>'
+            for value, label in metrics
+        )
+        st.markdown(
+            f'<div class="metric-grid">{metric_markup}</div>',
+            unsafe_allow_html=True,
+        )
+except Exception:
+    st.error("The portal summary could not be loaded.")
+
+st.markdown("<br>", unsafe_allow_html=True)
+search_column, context_column = st.columns([1.25, 1], gap="large")
+
+with search_column:
+    st.markdown("## Start with a gene")
+    st.markdown(
+        "Open a profile to see its strongest lineage effects, spider plot, "
+        "quality context, and expression trajectory."
+    )
+    try:
+        genes = get_gene_list()
+        selected_gene = st.selectbox(
+            "Gene",
+            options=[""] + genes,
+            format_func=lambda value: "Type to search the EBs screen…" if not value else value,
+            label_visibility="collapsed",
+            key="home_gene_search",
+        )
+        if selected_gene:
+            st.session_state["selected_gene"] = selected_gene
+            st.markdown(
+                f'<a class="primary-link" href="Gene_Detail?gene={quote(selected_gene)}">'
+                f'Open {selected_gene} profile&nbsp; →</a>',
+                unsafe_allow_html=True,
+            )
+        st.page_link(
+            "pages/1_Gene_Search.py",
+            label="Browse significant lineage effects",
+            icon=":material/search:",
+        )
+    except FileNotFoundError:
+        st.error("The EBs gene index is unavailable.")
+
+with context_column:
+    st.markdown("## What this browser is for")
+    st.markdown(
+        """
+        - **Find phenotype-shifting TFs** by lineage, direction, effect size, and significance.
+        - **Read a perturbation profile** with the spider plot and underlying Glass's Δ values together.
+        - **Place the target in developmental context** using unperturbed timecourse expression when present.
+        - **Inspect supporting evidence** such as viability, UMAPs, differential expression, and pathways when available.
+        """
+    )
+
+st.divider()
+status = get_data_status()
+screen_date = status.get("screen_updated") or "unknown"
+timecourse_date = status.get("timecourse_updated") or "not exported"
+timecourse_coverage = stats.get("n_screen_genes_timecourse", 0) if "stats" in locals() else 0
+screen_gene_count = stats.get("n_genes", 0) if "stats" in locals() else 0
+coverage_text = (
+    f" It contains expression summaries for **{timecourse_coverage:,} of "
+    f"{screen_gene_count:,}** screened targets; absence means the target was not retained "
+    "in the processed expression matrix."
+    if timecourse_coverage and screen_gene_count
+    else ""
+)
+st.markdown("### Data scope")
+st.markdown(
+    f"This release focuses on **embryoid bodies (EBs)**. The perturbation screen was "
+    f"last exported **{screen_date}**; timecourse summaries were last exported "
+    f"**{timecourse_date}**. Timecourse expression is observational baseline context—not "
+    f"a perturbation effect.{coverage_text}"
+)
+
+st.caption(
+    "MorPhiC Consortium · Molecular Phenotypes of Null Alleles in Cells · "
+    "Gilbert Lab, UCSF"
+)
+
 render_sidebar()

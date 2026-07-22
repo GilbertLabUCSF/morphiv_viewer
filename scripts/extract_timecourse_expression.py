@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Extract per-gene expression statistics across timepoints from timecourse h5ad.
+Extract per-gene expression statistics across timepoints from the full merged
+timecourse matrix.
 
-This script reads the timecourse scVI-processed h5ad file and extracts:
-- Mean expression per gene per day
-- Percentage of cells expressing at multiple thresholds:
-  - pct_expressing: >0 (any expression)
-  - pct_expr_gt1: >1 TPM (low threshold)
-  - pct_expr_gt5: >5 TPM (moderate threshold)
+This script reads the full merged timecourse h5ad file and extracts:
+- Mean log1p-normalized counts per 10,000 (CP10K) per gene per day
+- Percentage of cells with observed expression (>0)
 - Number of cells per day
 
 Output: data_extracted/timecourse_expression.parquet
 """
 
 from pathlib import Path
+from datetime import datetime, timezone
+import json
 import warnings
 
 import numpy as np
@@ -35,13 +35,15 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_SYMLINK = PROJECT_ROOT / "data"
 DATA_EXTRACTED = PROJECT_ROOT / "data_extracted"
 
-# Input h5ad - try multiple possible locations
+# Prefer the full-gene merged object. The scVI object contains only selected
+# HVGs/markers and would omit most screened transcription factors.
 H5AD_PATHS = [
-    DATA_SYMLINK / "single_cell_timecourse/results_latest/processed/timecourse_scvi.h5ad",
-    DATA_SYMLINK / "single_cell_timecourse/results/processed/timecourse_scvi.h5ad",
+    DATA_SYMLINK / "single_cell_timecourse/results/processed/timecourse_merged.h5ad",
+    DATA_SYMLINK / "single_cell_timecourse/results_latest/processed/timecourse_merged.h5ad",
 ]
 
 OUTPUT_PATH = DATA_EXTRACTED / "timecourse_expression.parquet"
+MANIFEST_PATH = DATA_EXTRACTED / "timecourse_manifest.json"
 
 # Column that contains day/timepoint information
 DAY_COLUMN = "day"  # Adjust if different in the actual data
@@ -62,10 +64,8 @@ def extract_expression_stats(adata, day_column: str) -> pd.DataFrame:
     Returns DataFrame with columns:
     - gene: gene symbol
     - day: timepoint
-    - mean_expression: mean expression (from normalized layer or X)
-    - pct_expressing: percentage of cells with expression > 0
-    - pct_expr_gt1: percentage of cells with expression > 1 TPM
-    - pct_expr_gt5: percentage of cells with expression > 5 TPM
+    - mean_expression: mean log1p-normalized CP10K expression
+    - pct_detected: percentage of cells with observed expression > 0
     - n_cells: number of cells in this day
     """
     print(f"  Extracting expression stats grouped by '{day_column}'...")
@@ -85,17 +85,10 @@ def extract_expression_stats(adata, day_column: str) -> pd.DataFrame:
     days = adata.obs[day_column].unique()
     print(f"  Found {len(days)} timepoints: {sorted(days)}")
 
-    # Use normalized counts if available, otherwise X
-    if "X_normalized" in adata.layers:
-        X = adata.layers["X_normalized"]
-        print("  Using X_normalized layer")
-    elif "counts" in adata.layers:
-        # If we have counts, use X (should be normalized)
-        X = adata.X
-        print("  Using X matrix")
-    else:
-        X = adata.X
-        print("  Using X matrix (default)")
+    # The merged pipeline stores log1p(CP10K) in X. Zeros remain zeros, so the
+    # same sparse matrix supports both a mean and an observed-detection rate.
+    X = adata.X
+    print("  Using X: log1p-normalized counts per 10,000")
 
     # Get gene names
     genes = adata.var_names.tolist()
@@ -103,26 +96,19 @@ def extract_expression_stats(adata, day_column: str) -> pd.DataFrame:
     results = []
 
     for day in sorted(days):
-        mask = adata.obs[day_column] == day
-        n_cells = mask.sum()
+        mask = (adata.obs[day_column] == day).to_numpy()
+        indices = np.flatnonzero(mask)
+        n_cells = len(indices)
 
         if n_cells == 0:
             continue
 
         # Subset data for this day
-        X_day = X[mask, :]
+        X_day = X[indices, :]
 
-        # Handle sparse matrix
-        if hasattr(X_day, "toarray"):
-            X_day_dense = X_day.toarray()
-        else:
-            X_day_dense = np.array(X_day)
-
-        # Calculate statistics
-        mean_expr = np.mean(X_day_dense, axis=0)
-        pct_expr = np.mean(X_day_dense > 0, axis=0) * 100
-        pct_expr_gt1 = np.mean(X_day_dense > 1, axis=0) * 100
-        pct_expr_gt5 = np.mean(X_day_dense > 5, axis=0) * 100
+        # Keep the operation sparse; densifying a full day can require several GB.
+        mean_expr = np.asarray(X_day.mean(axis=0)).ravel()
+        pct_detected = np.asarray((X_day > 0).mean(axis=0)).ravel() * 100
 
         # Create rows for this day
         for i, gene in enumerate(genes):
@@ -130,10 +116,11 @@ def extract_expression_stats(adata, day_column: str) -> pd.DataFrame:
                 "gene": gene,
                 "day": day,
                 "mean_expression": float(mean_expr[i]),
-                "pct_expressing": float(pct_expr[i]),
-                "pct_expr_gt1": float(pct_expr_gt1[i]),
-                "pct_expr_gt5": float(pct_expr_gt5[i]),
+                "pct_detected": float(pct_detected[i]),
+                # Backward-compatible alias for downstream downloads.
+                "pct_expressing": float(pct_detected[i]),
                 "n_cells": int(n_cells),
+                "expression_scale": "log1p_cp10k",
             })
 
         print(f"    Day {day}: {n_cells} cells processed")
@@ -170,7 +157,7 @@ def main():
 
     # Load h5ad
     print("[2/4] Loading h5ad file (this may take a few minutes)...")
-    adata = sc.read_h5ad(h5ad_path)
+    adata = sc.read_h5ad(h5ad_path, backed="r")
     print(f"  Loaded: {adata.n_obs} cells x {adata.n_vars} genes")
     print(f"  Obs columns: {list(adata.obs.columns[:10])}...")
     print()
@@ -184,7 +171,23 @@ def main():
     # Save output
     print("[4/4] Saving to parquet...")
     DATA_EXTRACTED.mkdir(exist_ok=True)
-    df.to_parquet(OUTPUT_PATH, index=False)
+    temp_path = OUTPUT_PATH.with_suffix(".parquet.tmp")
+    df.to_parquet(temp_path, index=False)
+    temp_path.replace(OUTPUT_PATH)
+    manifest = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": str(h5ad_path.relative_to(PROJECT_ROOT)),
+        "source_modified_at": datetime.fromtimestamp(
+            h5ad_path.stat().st_mtime, timezone.utc
+        ).isoformat(),
+        "n_cells": int(adata.n_obs),
+        "n_genes": int(adata.n_vars),
+        "timepoints": [str(value) for value in sorted(adata.obs[DAY_COLUMN].unique())],
+        "expression_scale": "log1p-normalized counts per 10,000",
+        "detection_definition": "fraction of cells with observed expression > 0",
+    }
+    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n")
+    adata.file.close()
     print(f"  Saved: {OUTPUT_PATH}")
     print(f"  Size: {OUTPUT_PATH.stat().st_size / 1e6:.2f} MB")
     print()

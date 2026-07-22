@@ -1,198 +1,168 @@
 #!/usr/bin/env python3
-"""
-Validate all required data sources exist before running the MORPHIC portal.
+"""Validate the EBs-focused portal export before startup or deployment."""
 
-Run this script before starting the Streamlit app to ensure all data is accessible.
-"""
+from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 
-# Base paths
-SCRIPT_DIR = Path(__file__).parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-DATA_SYMLINK = PROJECT_ROOT / "data"
-DATA_EXTRACTED = PROJECT_ROOT / "data_extracted"
+import pandas as pd
 
-# Expected source paths (relative to data symlink)
-REQUIRED_FILES = {
-    # Lineage analysis
-    "tf_perturbseq/results/EBs/lineage_analysis/EBs_lineage_analysis_merged.csv": "EBs lineage analysis",
-    "tf_perturbseq/results/iPSC/lineage_analysis/iPSC_lineage_analysis_merged.csv": "iPSC lineage analysis",
 
-    # Knockdown efficiency
-    "tf_perturbseq/results/EBs/knockdown_efficiency/knockdown_efficiency_all_genes.csv": "EBs knockdown efficiency",
-    "tf_perturbseq/results/iPSC/knockdown_efficiency/knockdown_efficiency_all_genes.csv": "iPSC knockdown efficiency",
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_ROOT = Path(os.environ.get("MORPHIC_DATA_PATH", PROJECT_ROOT / "data"))
+EXTRACTED_ROOT = PROJECT_ROOT / "data_extracted"
+RESULTS = DATA_ROOT / "tf_perturbseq" / "results" / "EBs"
+FIGURES = DATA_ROOT / "tf_perturbseq" / "figures" / "EBs"
 
-    # Viability
-    "tf_perturbseq/results_dec1/EBs/viability/viability_scores_gene_level.csv": "EBs viability scores",
-    "tf_perturbseq/results_dec1/iPSC/viability/viability_scores_gene_level.csv": "iPSC viability scores",
-
-    # Compositional analysis
-    "tf_perturbseq/results/EBs/compositional/EBs_significant_hits.csv": "EBs compositional hits",
-    "tf_perturbseq/results/iPSC/compositional/iPSC_significant_hits.csv": "iPSC compositional hits",
-
-    # TF similarity
-    "tf_perturbseq/results/EBs/tf_similarity/EBs_tf_clusters.csv": "EBs TF clusters",
-
-    # Gene list
-    "tf_perturbseq/results/EBs/resolved_targets.csv": "EBs resolved targets",
-    "tf_perturbseq/results/iPSC/resolved_targets.csv": "iPSC resolved targets",
-
-    # Timecourse h5ad (source for extraction)
-    "single_cell_timecourse/results_latest/processed/timecourse_scvi.h5ad": "Timecourse h5ad",
+CORE_TABLES = {
+    "lineage": (
+        RESULTS / "lineage_analysis" / "EBs_lineage_analysis_merged.csv",
+        {"perturbation", "lineage", "n_cells", "observed_glass_delta", "q_value"},
+    ),
+    "knockdown": (
+        RESULTS / "knockdown_efficiency" / "knockdown_efficiency_all_genes.csv",
+        {"perturbation", "target_gene", "knockdown_pct", "n_cells"},
+    ),
+    "viability": (
+        RESULTS / "viability" / "viability_scores_gene_level.csv",
+        {"gene", "median_lfc", "stouffer_q"},
+    ),
+    "probability shifts": (
+        RESULTS / "knn_probability_shifts" / "EBs_knn_prob_shifts.csv",
+        {
+            "perturbation",
+            "lineage",
+            "mean_prob_pert",
+            "mean_prob_ntc",
+            "log2fc",
+            "ci_low",
+            "ci_high",
+            "q_value_boot",
+            "n_cells",
+        },
+    ),
 }
 
-REQUIRED_DIRECTORIES = {
-    "tf_perturbseq/results_new_GS/EBs/differential_expression/deg_tables": "DEG tables directory",
+OPTIONAL_ASSETS = {
+    "Compositional hits": RESULTS / "compositional" / "EBs_significant_hits.csv",
+    "Transcriptome E-distance": RESULTS / "transcriptome_edist" / "EBs_tedist_merged.csv",
+    "Dose response": RESULTS / "dose_response" / "EBs_dose_response.csv",
+    "TF clusters": RESULTS / "tf_similarity" / "EBs_tf_clusters.csv",
+    "Pathway enrichment lookup": EXTRACTED_ROOT / "pathway_enrichment_ebs.parquet",
+    "DEG tables": RESULTS / "differential_expression" / "deg_tables",
+    "Lineage DE": RESULTS / "lineage_de",
+    "Spider plots": FIGURES / "lineage_analysis" / "spider",
+    "UMAP highlights": FIGURES / "umap" / "highlights",
 }
 
-EXTRACTED_FILES = {
-    "timecourse_expression.parquet": "Timecourse per-gene expression",
-}
+TIMECOURSE_SOURCE = (
+    DATA_ROOT
+    / "single_cell_timecourse"
+    / "results"
+    / "processed"
+    / "timecourse_merged.h5ad"
+)
+TIMECOURSE_EXPORT = EXTRACTED_ROOT / "timecourse_expression.parquet"
 
 
-def check_symlink():
-    """Check that data symlink exists and points to correct location."""
-    if not DATA_SYMLINK.exists():
-        return False, "Data symlink does not exist"
-
-    if not DATA_SYMLINK.is_symlink():
-        return False, "data/ is not a symlink"
-
-    target = DATA_SYMLINK.resolve()
-    if not target.exists():
-        return False, f"Symlink target does not exist: {target}"
-
-    if "morphic_pub_refactor" not in str(target):
-        return False, f"Symlink points to unexpected location: {target}"
-
-    return True, f"Symlink OK: data -> {target}"
-
-
-def check_required_files():
-    """Check all required source files exist."""
-    missing = []
-    found = []
-
-    for rel_path, description in REQUIRED_FILES.items():
-        full_path = DATA_SYMLINK / rel_path
-        if full_path.exists():
-            found.append((rel_path, description))
-        else:
-            missing.append((rel_path, description))
-
-    return found, missing
-
-
-def check_required_directories():
-    """Check required directories exist and have content."""
+def validate_table(label: str, path: Path, required_columns: set[str]) -> list[str]:
     issues = []
-    ok = []
+    if not path.exists():
+        return [f"{label}: missing {path}"]
+    try:
+        sample = pd.read_csv(path, nrows=10)
+    except Exception as exc:
+        return [f"{label}: unreadable ({exc})"]
+    missing_columns = required_columns - set(sample.columns)
+    if missing_columns:
+        issues.append(f"{label}: missing columns {sorted(missing_columns)}")
+    if path.stat().st_size == 0:
+        issues.append(f"{label}: file is empty")
+    return issues
 
-    for rel_path, description in REQUIRED_DIRECTORIES.items():
-        full_path = DATA_SYMLINK / rel_path
-        if not full_path.exists():
-            issues.append((rel_path, description, "Directory does not exist"))
-        elif not full_path.is_dir():
-            issues.append((rel_path, description, "Path is not a directory"))
-        else:
-            file_count = len(list(full_path.glob("*.csv")))
-            if file_count == 0:
-                issues.append((rel_path, description, "Directory is empty"))
+
+def main() -> int:
+    print("MORPHIC EBs portal data validation")
+    print("=" * 40)
+    issues: list[str] = []
+
+    if not DATA_ROOT.exists():
+        issues.append(f"Data root is unavailable: {DATA_ROOT}")
+    else:
+        print(f"✓ Data root: {DATA_ROOT.resolve()}")
+
+    for label, (path, columns) in CORE_TABLES.items():
+        table_issues = validate_table(label, path, columns)
+        issues.extend(table_issues)
+        if not table_issues:
+            print(f"✓ Core table: {label}")
+
+    if not TIMECOURSE_EXPORT.exists():
+        issues.append(
+            "Timecourse export is missing; run scripts/extract_timecourse_expression.py"
+        )
+    else:
+        try:
+            timecourse = pd.read_parquet(TIMECOURSE_EXPORT)
+            required = {
+                "gene",
+                "day",
+                "mean_expression",
+                "pct_detected",
+                "n_cells",
+                "expression_scale",
+            }
+            missing = required - set(timecourse.columns)
+            if missing:
+                issues.append(f"Timecourse export is missing columns {sorted(missing)}")
+            elif timecourse.empty:
+                issues.append("Timecourse export is empty")
             else:
-                ok.append((rel_path, description, f"{file_count} files"))
+                target_path = CORE_TABLES["knockdown"][0]
+                coverage_text = ""
+                if target_path.exists():
+                    targets = pd.read_csv(target_path, usecols=["target_gene"])
+                    target_genes = set(targets["target_gene"].dropna().astype(str))
+                    timecourse_genes = set(timecourse["gene"].dropna().astype(str))
+                    covered_targets = len(target_genes & timecourse_genes)
+                    coverage_text = (
+                        f", {covered_targets:,}/{len(target_genes):,} "
+                        "screen targets represented"
+                    )
+                print(
+                    f"✓ Timecourse export: {timecourse['gene'].nunique():,} genes, "
+                    f"{timecourse['day'].nunique()} timepoints{coverage_text}"
+                )
+        except Exception as exc:
+            issues.append(f"Timecourse export is unreadable ({exc})")
 
-    return ok, issues
+    if TIMECOURSE_SOURCE.exists() and TIMECOURSE_EXPORT.exists():
+        if TIMECOURSE_SOURCE.stat().st_mtime > TIMECOURSE_EXPORT.stat().st_mtime:
+            issues.append(
+                "Timecourse export is older than its source H5AD; regenerate the export"
+            )
 
-
-def check_extracted_files():
-    """Check extracted data files exist."""
-    missing = []
-    found = []
-
-    for filename, description in EXTRACTED_FILES.items():
-        full_path = DATA_EXTRACTED / filename
-        if full_path.exists():
-            found.append((filename, description))
+    print("\nOptional analysis coverage")
+    for label, path in OPTIONAL_ASSETS.items():
+        if path.is_dir():
+            count = len(list(path.glob("*.csv"))) + len(list(path.glob("*.png")))
+            print(f"{'✓' if count else '–'} {label}: {count:,} files")
+        elif path.exists():
+            print(f"✓ {label}")
         else:
-            missing.append((filename, description))
+            print(f"– {label}: not exported")
 
-    return found, missing
+    if issues:
+        print("\nRelease-blocking issues")
+        for issue in issues:
+            print(f"✗ {issue}")
+        return 1
 
-
-def main():
-    print("=" * 60)
-    print("MORPHIC Portal Data Validation")
-    print("=" * 60)
-    print()
-
-    all_ok = True
-
-    # Check symlink
-    print("[1/4] Checking data symlink...")
-    symlink_ok, symlink_msg = check_symlink()
-    if symlink_ok:
-        print(f"  ✓ {symlink_msg}")
-    else:
-        print(f"  ✗ {symlink_msg}")
-        print()
-        print("  To fix, run:")
-        print(f"    cd {PROJECT_ROOT}")
-        print("    ln -s ../morphic_pub_refactor data")
-        all_ok = False
-        print()
-        print("Cannot continue without data symlink. Exiting.")
-        sys.exit(1)
-    print()
-
-    # Check required files
-    print("[2/4] Checking required source files...")
-    found_files, missing_files = check_required_files()
-    for rel_path, description in found_files:
-        print(f"  ✓ {description}")
-    for rel_path, description in missing_files:
-        print(f"  ✗ MISSING: {description}")
-        print(f"      Expected: {DATA_SYMLINK / rel_path}")
-        all_ok = False
-    print()
-
-    # Check required directories
-    print("[3/4] Checking required directories...")
-    ok_dirs, issue_dirs = check_required_directories()
-    for rel_path, description, info in ok_dirs:
-        print(f"  ✓ {description} ({info})")
-    for rel_path, description, issue in issue_dirs:
-        print(f"  ✗ {description}: {issue}")
-        print(f"      Expected: {DATA_SYMLINK / rel_path}")
-        all_ok = False
-    print()
-
-    # Check extracted files
-    print("[4/4] Checking extracted data files...")
-    found_extracted, missing_extracted = check_extracted_files()
-    for filename, description in found_extracted:
-        print(f"  ✓ {description}")
-    for filename, description in missing_extracted:
-        print(f"  ⚠ NOT YET EXTRACTED: {description}")
-        print(f"      Run: python scripts/extract_timecourse_expression.py")
-    print()
-
-    # Summary
-    print("=" * 60)
-    if all_ok and not missing_extracted:
-        print("✓ All data sources validated successfully!")
-        print("  You can now run: streamlit run app.py")
-    elif all_ok:
-        print("⚠ Source data OK, but extracted data missing.")
-        print("  Run extraction scripts before starting the app:")
-        print("    python scripts/extract_timecourse_expression.py")
-    else:
-        print("✗ Some required data sources are missing.")
-        print("  Please check the paths above and fix any issues.")
-        sys.exit(1)
-    print("=" * 60)
+    print("\n✓ EBs portal data is ready")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

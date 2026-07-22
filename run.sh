@@ -8,7 +8,7 @@ cd "$SCRIPT_DIR"
 ENV_DIR="./morphic_website_env"
 PORT="${1:-8501}"
 
-echo "=== MORPHIC TF Perturbation Portal ==="
+echo "=== MORPHIC EBs TF Perturbation Browser ==="
 echo
 
 # Check environment
@@ -21,24 +21,37 @@ fi
 # Activate environment
 source "$ENV_DIR/bin/activate"
 
-# Validate data sources
-echo "[1/3] Validating data sources..."
-python scripts/validate_data_sources.py
-echo
-
-# Extract timecourse data if needed
+# Refresh the derived timecourse data if needed
 TIMECOURSE_FILE="data_extracted/timecourse_expression.parquet"
-if [ ! -f "$TIMECOURSE_FILE" ]; then
-    echo "[2/3] Extracting timecourse expression data..."
+TIMECOURSE_SOURCE="data/single_cell_timecourse/results/processed/timecourse_merged.h5ad"
+if [ ! -f "$TIMECOURSE_FILE" ] || { [ -f "$TIMECOURSE_SOURCE" ] && [ "$TIMECOURSE_SOURCE" -nt "$TIMECOURSE_FILE" ]; }; then
+    echo "[1/4] Extracting timecourse expression data..."
     python scripts/extract_timecourse_expression.py
     echo
 else
-    echo "[2/3] Timecourse data already extracted, skipping"
+    echo "[1/4] Timecourse export is current, skipping"
     echo
 fi
 
+# Build the query-optimized pathway table if the upstream CSV changed
+PATHWAY_FILE="data_extracted/pathway_enrichment_ebs.parquet"
+PATHWAY_SOURCE="data/tf_perturbseq/results/EBs/pathway_enrichment/EBs_enrichment_results.csv"
+if [ -f "$PATHWAY_SOURCE" ] && { [ ! -f "$PATHWAY_FILE" ] || [ "$PATHWAY_SOURCE" -nt "$PATHWAY_FILE" ]; }; then
+    echo "[2/4] Building pathway lookup..."
+    python scripts/extract_pathway_enrichment.py
+    echo
+else
+    echo "[2/4] Pathway lookup is current, skipping"
+    echo
+fi
+
+# Validate data sources after all derived data is current
+echo "[3/4] Validating data sources..."
+python scripts/validate_data_sources.py
+echo
+
 # Launch server
-echo "[3/3] Starting Streamlit on port $PORT..."
+echo "[4/4] Starting Streamlit on port $PORT..."
 echo "      Access at: http://localhost:$PORT"
 echo
 exec "$ENV_DIR/bin/streamlit" run app.py --server.headless true --server.port "$PORT"

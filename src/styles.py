@@ -16,6 +16,17 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* Use the curated navigation below, not Streamlit's duplicate page list. */
+[data-testid="stSidebarNav"] { display: none; }
+
+.eyebrow {
+    color: #c8a57b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin: 0 0 0.65rem 0;
+}
+
 /* Headers */
 h1, h2, h3, h4, h5, h6 {
     font-family: 'DM Serif Display', Georgia, serif;
@@ -26,22 +37,69 @@ h1, h2, h3, h4, h5, h6 {
 /* Main title styling */
 .main-title {
     font-family: 'DM Serif Display', Georgia, serif;
-    font-size: 2.2rem;
+    font-size: clamp(2.2rem, 4vw, 3.5rem);
     font-weight: 400;
     letter-spacing: -0.01em;
-    margin-bottom: 0.25rem;
+    line-height: 1.08;
+    max-width: 980px;
+    margin-bottom: 0.65rem;
     color: #e8e5e1;
 }
 
 /* Subtitle */
 .subtitle {
-    font-size: 1rem;
+    font-size: 1.08rem;
     color: #8a8580;
     font-weight: 400;
-    margin-bottom: 1.5rem;
+    line-height: 1.65;
+    max-width: 820px;
+    margin-bottom: 1.75rem;
 }
 
+.primary-link {
+    display: inline-flex;
+    align-items: center;
+    margin: 0.65rem 0 1rem;
+    padding: 0.72rem 1rem;
+    border-radius: 7px;
+    background: #c8a57b;
+    color: #0c0b0a !important;
+    font-weight: 700;
+    text-decoration: none !important;
+}
+.primary-link:hover { background: #d4b48e; }
+
+.evidence-callout {
+    margin: 0.45rem 0 0.25rem;
+    padding: 0.72rem 0.9rem;
+    border-left: 3px solid #c8a57b;
+    border-radius: 4px;
+    background: rgba(200, 165, 123, 0.08);
+    color: #d7d2cc;
+    line-height: 1.45;
+}
+
+.profile-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin: 0.55rem 0 0.7rem;
+}
+.profile-heading span {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 2rem;
+    color: #e8e5e1;
+}
+.profile-heading small { color: #8a8580; }
+.profile-heading small::before { content: "·"; margin-right: 1rem; }
+
 /* Metric cards */
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
 .metric-card {
     background: #1a1918;
     border: 1px solid rgba(180, 170, 155, 0.1);
@@ -50,6 +108,20 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
     transition: transform 0.15s, box-shadow 0.15s;
 }
+
+.profile-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+.profile-metric-grid .metric-card {
+    min-height: 104px;
+    padding: 0.9rem 1rem;
+    text-align: left;
+}
+.profile-metric-label { color: #c9c4bd; font-size: 0.83rem; }
+.profile-metric-value { color: #f1eee9; font-size: 1.38rem; margin-top: 0.25rem; }
+.profile-metric-note { color: #8a8580; font-size: 0.76rem; margin-top: 0.15rem; }
 .metric-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -91,6 +163,9 @@ h1, h2, h3, h4, h5, h6 {
 /* Hide footer */
 footer {visibility: hidden;}
 
+/* Keep secondary text readable on dark surfaces. */
+.stCaption, [data-testid="stCaptionContainer"] { color: #8a8580 !important; }
+
 /* Improve dataframe styling */
 .stDataFrame {
     font-family: 'DM Sans', sans-serif;
@@ -127,6 +202,20 @@ footer {visibility: hidden;}
 
 [data-testid="stMetricValue"] {
     font-size: 1.25rem !important;
+}
+
+@media (max-width: 700px) {
+    .main-title { font-size: 2.15rem; }
+    .metric-grid, .profile-metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+    .metric-card { padding: 0.9rem 0.5rem; }
+    .metric-value { font-size: 1.4rem; }
+    .profile-heading { display: block; }
+    .profile-heading small { display: block; margin-top: 0.2rem; }
+    .profile-heading small::before { content: ""; margin: 0; }
+    .stTabs [data-baseweb="tab"] { padding: 7px 9px; }
 }
 
 /* Subheader spacing */

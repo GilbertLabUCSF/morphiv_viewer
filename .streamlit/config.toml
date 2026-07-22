@@ -1,11 +1,10 @@
 [theme]
 base = "dark"
-primaryColor = "#3498db"
+primaryColor = "#c8a57b"
 font = "sans serif"
 
 [server]
 maxUploadSize = 200
-enableCORS = false
 
 [browser]
 gatherUsageStats = false
