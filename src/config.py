@@ -144,12 +144,16 @@ def get_deg_volcano_path(perturbation: str, condition: str, fmt: str = "png") ->
 
 
 def get_marker_tpm_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated marker TPM validation figure."""
+    """Get path to a pre-generated marker CPM validation figure.
+
+    The historical ``marker_tpm`` filename is retained for compatibility with
+    the analysis output, but the plotted expression unit is CPM.
+    """
     return FIGURES_ROOT / condition / "marker_validation" / f"{perturbation}_marker_tpm.{fmt}"
 
 
 def get_antibody_validation_path(perturbation: str, condition: str, fmt: str = "png") -> Path:
-    """Get path to pre-generated antibody validation figure."""
+    """Get path to a pre-generated antibody-marker CPM validation figure."""
     return FIGURES_ROOT / condition / "antibody_validation" / f"{perturbation}_antibody_markers.{fmt}"
 
 

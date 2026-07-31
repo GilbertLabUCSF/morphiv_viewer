@@ -55,6 +55,8 @@ OPTIONAL_ASSETS = {
     "Lineage DE": RESULTS / "lineage_de",
     "Spider plots": FIGURES / "lineage_analysis" / "spider",
     "UMAP highlights": FIGURES / "umap" / "highlights",
+    "Marker CPM panels": FIGURES / "marker_validation",
+    "Antibody-marker CPM panels": FIGURES / "antibody_validation",
 }
 
 TIMECOURSE_SOURCE = (

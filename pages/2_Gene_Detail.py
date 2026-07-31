@@ -749,18 +749,32 @@ elif view == "Molecular readouts":
 
     elif analysis == "Marker validation":
         marker_dotplot = get_marker_dotplot_path(selected_perturbation, "EBs")
-        marker_tpm = get_marker_tpm_path(selected_perturbation, "EBs")
+        marker_cpm = get_marker_tpm_path(selected_perturbation, "EBs")
         antibody = get_antibody_validation_path(selected_perturbation, "EBs")
-        available_images = [
+
+        marker_images = [
             (marker_dotplot, "Marker-gene dot plot"),
-            (marker_tpm, "Perturbed versus control marker expression"),
-            (antibody, "Antibody-detectable marker panel"),
+            (marker_cpm, "Perturbed versus NTC marker expression · CPM"),
         ]
         shown = False
-        for image_path, caption in available_images:
+        for image_path, caption in marker_images:
             if image_path.exists():
                 st.image(str(image_path), caption=caption, width="stretch")
                 shown = True
+
+        if antibody.exists():
+            st.markdown("#### Antibody-marker panel")
+            st.image(
+                str(antibody),
+                caption="Perturbed versus NTC expression for antibody-detectable markers · CPM",
+                width="stretch",
+            )
+            st.caption(
+                "This panel restricts the expression comparison to markers with antibodies "
+                "selected for experimental validation."
+            )
+            shown = True
+
         if not shown:
             st.info("No marker-validation figure is available for this perturbation.")
 
@@ -805,9 +819,12 @@ elif view == "Data & methods":
         "Lineage-specific DE": bool(
             get_available_lineage_de(selected_perturbation)
         ),
-        "Marker validation": get_marker_dotplot_path(
+        "Marker expression (CPM)": get_marker_dotplot_path(
             selected_perturbation, "EBs"
         ).exists() or get_marker_tpm_path(selected_perturbation, "EBs").exists(),
+        "Antibody-marker panel (CPM)": get_antibody_validation_path(
+            selected_perturbation, "EBs"
+        ).exists(),
     }
     availability_table = pd.DataFrame(
         {
